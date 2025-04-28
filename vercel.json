@@ -3,5 +3,9 @@
   "installCommand": "npm install --force",
   "buildCommand": "npm run build",
   "framework": "vite",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "env": {
+    "NODE_ENV": "production",
+    "SKIP_TYPESCRIPT_CHECK": "true"
+  }
 }

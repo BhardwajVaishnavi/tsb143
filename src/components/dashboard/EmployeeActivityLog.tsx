@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaExchangeAlt, FaBoxOpen, FaArrowDown, FaArrowUp, FaExclamationTriangle } from 'react-icons/fa';
 import { formatDistanceToNow } from 'date-fns';
-import { mockEmployeeActivities, mockActivityLogs } from '../../utils/mockData';
 
 interface EmployeeActivity {
   id: string;
@@ -87,64 +86,55 @@ const EmployeeActivityLog: React.FC = () => {
         } catch (apiError) {
           console.error('API error fetching employee activities, using mock data:', apiError);
 
-          // Use mock employee activities directly if available
-          if (mockEmployeeActivities && mockEmployeeActivities.length > 0) {
-            setActivities(mockEmployeeActivities.map(activity => ({
-              ...activity,
-              action: activity.action.toUpperCase()
-            })));
-          } else {
-            // Or transform activity logs to employee activities
-            const transformedMockActivities = mockActivityLogs
-              .filter(log => log.action !== 'login' && log.action !== 'logout')
-              .map(log => {
-                let quantity = 0;
-                let entityName = '';
+          // Create some default activities when API fails
+          const defaultActivities = [
+            {
+              id: '1',
+              employeeName: 'John Doe',
+              employeeId: 'user-1',
+              action: 'TRANSFER',
+              entityType: 'inventory',
+              entityName: 'Laptop',
+              entityId: 'item-1',
+              quantity: 5,
+              timestamp: new Date().toISOString(),
+              details: 'Transferred 5 units of Laptop to Retail Store'
+            },
+            {
+              id: '2',
+              employeeName: 'Jane Smith',
+              employeeId: 'user-2',
+              action: 'RECEIVE',
+              entityType: 'warehouse',
+              entityName: 'Office Chair',
+              entityId: 'item-2',
+              quantity: 10,
+              timestamp: new Date(Date.now() - 3600000).toISOString(),
+              details: 'Received 10 units of Office Chair from Supplier'
+            }
+          ];
 
-                // Try to extract quantity and entity name from details
-                if (log.details) {
-                  const transferMatch = log.details.match(/Transferred (\d+) units of (.+?) to/);
-                  const receivedMatch = log.details.match(/Received (\d+) units of (.+?) from/);
-                  const reportedMatch = log.details.match(/Reported (\d+) units of (.+?) as/);
-
-                  if (transferMatch) {
-                    quantity = parseInt(transferMatch[1], 10);
-                    entityName = transferMatch[2];
-                  } else if (receivedMatch) {
-                    quantity = parseInt(receivedMatch[1], 10);
-                    entityName = receivedMatch[2];
-                  } else if (reportedMatch) {
-                    quantity = parseInt(reportedMatch[1], 10);
-                    entityName = reportedMatch[2];
-                  }
-                }
-
-                return {
-                  id: log.id,
-                  employeeName: log.userName,
-                  employeeId: log.userId,
-                  action: log.action.toUpperCase(),
-                  entityType: log.entity,
-                  entityName,
-                  entityId: log.entityId || '',
-                  quantity,
-                  timestamp: log.timestamp,
-                  details: log.details
-                };
-              });
-
-            setActivities(transformedMockActivities);
-          }
+          setActivities(defaultActivities);
         }
       } catch (error) {
         console.error('Error fetching employee activities:', error);
         setError('Failed to load employee activities. Please try again later.');
 
-        // Fallback to mock data
-        const fallbackActivities = mockEmployeeActivities.map(activity => ({
-          ...activity,
-          action: activity.action.toUpperCase()
-        }));
+        // Fallback to default data
+        const fallbackActivities = [
+          {
+            id: '1',
+            employeeName: 'John Doe',
+            employeeId: 'user-1',
+            action: 'TRANSFER',
+            entityType: 'inventory',
+            entityName: 'Laptop',
+            entityId: 'item-1',
+            quantity: 5,
+            timestamp: new Date().toISOString(),
+            details: 'Transferred 5 units of Laptop to Retail Store'
+          }
+        ];
 
         setActivities(fallbackActivities);
         setError(null); // Clear error since we have fallback data

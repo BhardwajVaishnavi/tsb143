@@ -1,7 +1,6 @@
 /**
  * Utility functions for making API requests
  */
-import { mockApiService } from './mockData';
 
 // Flag to indicate if we're in offline mode
 let isOfflineMode = false;
@@ -270,35 +269,7 @@ export const uploadFile = async (file: File, type: string = 'product-image'): Pr
 };
 
 // Helper function to get mock data based on the URL
-const getMockData = (url: string, _data?: any): any => {
-  // Extract the endpoint from the URL
-  const endpoint = url.split('/').slice(2).join('/');
-
-  // Inventory endpoints
-  if (endpoint.includes('inventory/items')) {
-    return mockApiService.getInventoryItems();
-  }
-
-  // Warehouse endpoints
-  if (endpoint.includes('warehouse/items')) {
-    return mockApiService.getWarehouseItems();
-  }
-
-  // Supplier endpoints
-  if (endpoint === 'suppliers') {
-    return mockApiService.getSuppliers();
-  }
-
-  // Purchase order endpoints
-  if (endpoint === 'purchase-orders') {
-    return mockApiService.getPurchaseOrders();
-  }
-
-  // Audit log endpoints
-  if (endpoint.includes('audit/logs')) {
-    return mockApiService.getActivityLogs();
-  }
-
+const getMockData = (_url: string, _data?: any): any => {
   // Default: return empty data
   return { data: [] };
 };
