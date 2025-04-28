@@ -4,19 +4,6 @@ const cookieParser = require('cookie-parser');
 
 const path = require('path');
 
-// Import route handlers
-const { handleAuditLogs } = require('./src/pages/api/audit/logs/index');
-const { getAuditLogsByAction } = require('./src/pages/api/audit/logs/action/[action]');
-const { getAuditLogsByEntity } = require('./src/pages/api/audit/logs/entity/[entityType]/[entityId]');
-const { getAuditLogsByUser } = require('./src/pages/api/audit/logs/user/[userId]');
-const { generateClosingStock } = require('./src/pages/api/warehouse/closing-stock/generate');
-const {
-  handleWarehouseRoutes,
-  handleInventoryRoutes,
-  handleLocationRoutes,
-  handleTransferRoutes
-} = require('./src/utils/apiRouteHandler');
-
 const app = express();
 const PORT = 5001;
 
@@ -83,65 +70,64 @@ app.get('/api/auth/me', (req, res) => {
   return res.status(401).json({ error: 'Unauthorized' });
 });
 
+// Generic API response for all routes
+const handleGenericRoute = (req, res) => {
+  return res.status(200).json({ message: 'API endpoint placeholder' });
+};
+
 // Audit logs routes
-app.get('/api/audit/logs', handleAuditLogs);
-app.post('/api/audit/logs', handleAuditLogs);
-app.get('/api/audit/logs/action/:action', getAuditLogsByAction);
-app.get('/api/audit/logs/entity/:entityType/:entityId', getAuditLogsByEntity);
-app.get('/api/audit/logs/user/:userId', getAuditLogsByUser);
+app.get('/api/audit/logs', handleGenericRoute);
+app.post('/api/audit/logs', handleGenericRoute);
+app.get('/api/audit/logs/action/:action', handleGenericRoute);
+app.get('/api/audit/logs/entity/:entityType/:entityId', handleGenericRoute);
+app.get('/api/audit/logs/user/:userId', handleGenericRoute);
+app.get('/api/audit/logs/date-range', handleGenericRoute);
 
 // Warehouse routes
-app.post('/api/warehouse/closing-stock/generate', generateClosingStock);
-app.get('/api/audit/logs/date-range', (req, res) => {
-  // Simple mock implementation for date range endpoint
-  return res.status(200).json([]);
-});
-
-// Warehouse routes
-app.get('/api/warehouse/items', handleWarehouseRoutes);
-app.get('/api/warehouse/items/:id', handleWarehouseRoutes);
-app.post('/api/warehouse/items', handleWarehouseRoutes);
-app.put('/api/warehouse/items/:id', handleWarehouseRoutes);
-app.delete('/api/warehouse/items/:id', handleWarehouseRoutes);
-app.get('/api/warehouse/inward', handleWarehouseRoutes);
-app.post('/api/warehouse/inward', handleWarehouseRoutes);
-app.get('/api/warehouse/outward', handleWarehouseRoutes);
-app.post('/api/warehouse/outward', handleWarehouseRoutes);
-app.get('/api/warehouse/damage', handleWarehouseRoutes);
-app.post('/api/warehouse/damage', handleWarehouseRoutes);
-app.put('/api/warehouse/damage/:id/approve', handleWarehouseRoutes);
-app.post('/api/warehouse/closing-stock/generate', handleWarehouseRoutes);
+app.get('/api/warehouse/items', handleGenericRoute);
+app.get('/api/warehouse/items/:id', handleGenericRoute);
+app.post('/api/warehouse/items', handleGenericRoute);
+app.put('/api/warehouse/items/:id', handleGenericRoute);
+app.delete('/api/warehouse/items/:id', handleGenericRoute);
+app.get('/api/warehouse/inward', handleGenericRoute);
+app.post('/api/warehouse/inward', handleGenericRoute);
+app.get('/api/warehouse/outward', handleGenericRoute);
+app.post('/api/warehouse/outward', handleGenericRoute);
+app.get('/api/warehouse/damage', handleGenericRoute);
+app.post('/api/warehouse/damage', handleGenericRoute);
+app.put('/api/warehouse/damage/:id/approve', handleGenericRoute);
+app.post('/api/warehouse/closing-stock/generate', handleGenericRoute);
 
 // Inventory routes
-app.get('/api/inventory/items', handleInventoryRoutes);
-app.get('/api/inventory/items/:id', handleInventoryRoutes);
-app.post('/api/inventory/items', handleInventoryRoutes);
-app.put('/api/inventory/items/:id', handleInventoryRoutes);
-app.delete('/api/inventory/items/:id', handleInventoryRoutes);
-app.get('/api/inventory/audit', handleInventoryRoutes);
-app.post('/api/inventory/audit', handleInventoryRoutes);
-app.get('/api/inventory/audit/:id', handleInventoryRoutes);
-app.get('/api/inventory/inward', handleInventoryRoutes);
-app.post('/api/inventory/inward', handleInventoryRoutes);
-app.get('/api/inventory/inward/:id', handleInventoryRoutes);
-app.get('/api/inventory/outward', handleInventoryRoutes);
-app.post('/api/inventory/outward', handleInventoryRoutes);
-app.get('/api/inventory/outward/:id', handleInventoryRoutes);
-app.get('/api/inventory/reports', handleInventoryRoutes);
-app.get('/api/inventory/transfers', handleInventoryRoutes);
-app.post('/api/inventory/transfers', handleInventoryRoutes);
-app.get('/api/inventory/transfers/:id', handleInventoryRoutes);
+app.get('/api/inventory/items', handleGenericRoute);
+app.get('/api/inventory/items/:id', handleGenericRoute);
+app.post('/api/inventory/items', handleGenericRoute);
+app.put('/api/inventory/items/:id', handleGenericRoute);
+app.delete('/api/inventory/items/:id', handleGenericRoute);
+app.get('/api/inventory/audit', handleGenericRoute);
+app.post('/api/inventory/audit', handleGenericRoute);
+app.get('/api/inventory/audit/:id', handleGenericRoute);
+app.get('/api/inventory/inward', handleGenericRoute);
+app.post('/api/inventory/inward', handleGenericRoute);
+app.get('/api/inventory/inward/:id', handleGenericRoute);
+app.get('/api/inventory/outward', handleGenericRoute);
+app.post('/api/inventory/outward', handleGenericRoute);
+app.get('/api/inventory/outward/:id', handleGenericRoute);
+app.get('/api/inventory/reports', handleGenericRoute);
+app.get('/api/inventory/transfers', handleGenericRoute);
+app.post('/api/inventory/transfers', handleGenericRoute);
+app.get('/api/inventory/transfers/:id', handleGenericRoute);
 
 // Location routes
-app.get('/api/locations', handleLocationRoutes);
-app.get('/api/locations/:id', handleLocationRoutes);
-app.post('/api/locations', handleLocationRoutes);
-app.put('/api/locations/:id', handleLocationRoutes);
-app.delete('/api/locations/:id', handleLocationRoutes);
+app.get('/api/locations', handleGenericRoute);
+app.get('/api/locations/:id', handleGenericRoute);
+app.post('/api/locations', handleGenericRoute);
+app.put('/api/locations/:id', handleGenericRoute);
+app.delete('/api/locations/:id', handleGenericRoute);
 
 // Transfer routes
-app.get('/api/transfers', handleTransferRoutes);
-app.post('/api/transfers', handleTransferRoutes);
+app.get('/api/transfers', handleGenericRoute);
+app.post('/api/transfers', handleGenericRoute);
 
 // Start the server
 app.listen(PORT, () => {
