@@ -1,0 +1,526 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String   @id @default(uuid())
+  name                    String
+  email                   String   @unique
+  password                String
+  role                    String   @default("ADMIN")
+  isActive                Boolean  @default(true)
+  lastLogin               DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  auditLogs               AuditLog[]
+  createdPurchaseOrders   PurchaseOrder[] @relation("CreatedPurchaseOrders")
+  approvedPurchaseOrders  PurchaseOrder[] @relation("ApprovedPurchaseOrders")
+  supplierContracts       SupplierContract[]
+  transfers               Transfer[]
+  inwardEntries           InwardEntry[] @relation("ReceivedInwardEntries")
+  outwardEntries          OutwardEntry[] @relation("TransferredOutwardEntries")
+  reportedDamages         DamageEntry[] @relation("ReportedDamageEntries")
+  approvedDamages         DamageEntry[] @relation("ApprovedDamageEntries")
+  closingStocks           ClosingStock[] @relation("CreatedClosingStocks")
+  conductedAudits         InventoryAudit[]
+  permissions             UserPermission[]
+}
+
+model Supplier {
+  id                String    @id @default(uuid())
+  name              String
+  email             String    @unique
+  phone             String?
+  alternatePhone    String?
+  address           String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String?
+  contactPerson     String?
+  contactTitle      String?
+  contactEmail      String?
+  contactPhone      String?
+  taxId             String?
+  registrationNumber String?
+  paymentTerms      String?
+  preferredCurrency String?   @default("INR")
+  bankName          String?
+  bankAccountNumber String?
+  bankRoutingNumber String?
+  bankSwiftCode     String?
+  rating            Int?      @default(3) // 1-5 rating
+  notes             String?
+  status            String    @default("ACTIVE")
+  category          String?
+  subCategory       String?
+  industryType      String?
+  website           String?
+  socialMediaJson   String?   // Store social media links as JSON string
+  yearEstablished   Int?
+  companySize       String?   // Small, Medium, Large
+  annualRevenue     Float?
+  certificationsJson String?  // Store certifications as JSON string
+  leadTime          Int?      // Average lead time in days
+  minimumOrderValue Float?    // Minimum order value
+  discountRate      Float?    // Discount percentage
+  creditLimit       Float?    // Credit limit
+  creditTerms       String?
+  returnPolicy      String?
+  qualityRating     Int?      @default(3) // 1-5 rating
+  deliveryRating    Int?      @default(3) // 1-5 rating
+  pricingRating     Int?      @default(3) // 1-5 rating
+  communicationRating Int?    @default(3) // 1-5 rating
+  onTimeDeliveryRate Float?   // Percentage of on-time deliveries
+  defectRate        Float?    // Percentage of defective items
+  lastPerformanceReview DateTime?
+  preferredShippingMethod String?
+  shippingTerms     String?
+  customsInfo       String?
+  importRestrictions String?
+  sustainabilityScore Int?    @default(0) // 0-100 score
+  environmentalCertificationsJson String? // Store environmental certifications as JSON string
+  logoUrl           String?
+  attachmentsJson   String?   // Store attachment URLs as JSON string
+  tagsJson          String?   // Store tags as JSON string
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  warehouseItems    WarehouseItem[]
+  purchaseOrders    PurchaseOrder[]
+  contracts         SupplierContract[]
+  performanceHistory SupplierPerformance[]
+  contacts          SupplierContact[]
+  documents         SupplierDocument[]
+  inwardEntries     InwardEntry[]
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Location {
+  id          String    @id @default(uuid())
+  name        String
+  type        String    // warehouse, inventory
+  address     String?
+  city        String?
+  state       String?
+  postalCode  String?
+  country     String?
+  contactName String?
+  contactPhone String?
+  contactEmail String?
+  notes       String?
+  status      String    @default("active") // active, inactive
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inventoryAudits InventoryAudit[]
+  inventoryItems  InventoryItem[]
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  sku         String?   @unique
+  description String?
+  price       Float
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inventoryItems InventoryItem[]
+}
+
+model WarehouseItem {
+  id                String    @id @default(uuid())
+  sku               String?   @unique // Stock Keeping Unit
+  productName       String
+  description       String?
+  category          String?
+  quantity          Int
+  unitOfMeasure     String    @default("unit") // e.g., unit, kg, liter
+  unitCost          Float     @default(0)
+  totalValue        Float     @default(0)
+  location          String?   // Warehouse location (e.g., "Aisle 5, Shelf B")
+  batchNumber       String?
+  expiryDate        DateTime?
+  manufactureDate   DateTime?
+  reorderPoint      Int       @default(10) // Quantity at which to reorder
+  maximumStock      Int?
+  supplierId        String
+  supplier          Supplier  @relation(fields: [supplierId], references: [id])
+  lastReceivedDate  DateTime?
+  lastCountDate     DateTime?
+  status            String    @default("active") // active, discontinued, on hold
+  notes             String?
+  barcode           String?
+  weight            Float?
+  dimensions        String?   // e.g., "10x20x30 cm"
+  imageUrl          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  transfers         Transfer[]
+  inwardEntries     InwardEntry[]
+  outwardEntries    OutwardEntry[]
+  damageEntries     DamageEntry[]
+  closingStocks     ClosingStock[]
+}
+
+model InventoryItem {
+  id                String    @id @default(uuid())
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id])
+  locationId        String    // Inventory location ID
+  location          Location  @relation(fields: [locationId], references: [id])
+  quantity          Int
+  unitPrice         Float
+  lowStockThreshold Int       @default(10)
+  status            String    @default("in_stock") // in_stock, out_of_stock, discontinued
+  lastRestockDate   DateTime?
+  lastOutwardDate   DateTime?
+  createdById       String
+  updatedById       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  transfers         Transfer[]
+  auditItems        InventoryAuditItem[]
+  inwardEntries     InwardEntry[]    @relation("InventoryInwardEntries")
+  outwardEntries    OutwardEntry[]   @relation("InventoryOutwardEntries")
+}
+
+model Transfer {
+  id                  String        @id @default(uuid())
+  sourceLocationId    String
+  destinationLocationId String
+  warehouseItemId     String?
+  warehouseItem       WarehouseItem? @relation(fields: [warehouseItemId], references: [id])
+  inventoryItemId     String?
+  inventoryItem       InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  quantity            Int
+  transferredById     String
+  transferredBy       User          @relation(fields: [transferredById], references: [id])
+  transferDate        DateTime      @default(now())
+  referenceNumber     String?
+  notes               String?
+  status              String        @default("completed") // pending, completed, cancelled
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  transferItems       TransferItem[]
+}
+
+model TransferItem {
+  id                  String        @id @default(uuid())
+  transferId          String
+  transfer            Transfer      @relation(fields: [transferId], references: [id])
+  productId           String
+  sourceItemId        String
+  destinationItemId   String
+  quantity            Int
+  oldPrice            Float
+  newPrice            Float
+  priceAdjustmentType String        @default("none") // none, fixed, percentage
+  priceAdjustmentValue Float         @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime  @default(now())
+}
+
+model PurchaseOrder {
+  id                String              @id @default(uuid())
+  orderNumber       String              @unique
+  supplierId        String
+  supplier          Supplier            @relation(fields: [supplierId], references: [id])
+  status            String              @default("DRAFT")
+  orderDate         DateTime            @default(now())
+  expectedDelivery  DateTime?
+  deliveryDate      DateTime?
+  totalAmount       Float
+  currency          String              @default("INR")
+  paymentTerms      String?
+  shippingMethod    String?
+  shippingCost      Float?              @default(0)
+  taxAmount         Float?              @default(0)
+  discountAmount    Float?              @default(0)
+  notes             String?
+  createdById       String
+  createdBy         User                @relation("CreatedPurchaseOrders", fields: [createdById], references: [id])
+  approvedById      String?
+  approvedBy        User?               @relation("ApprovedPurchaseOrders", fields: [approvedById], references: [id])
+  approvalDate      DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  items             PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  productName     String
+  description     String?
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  receivedQuantity Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model SupplierContract {
+  id                String          @id @default(uuid())
+  contractNumber    String          @unique
+  supplierId        String
+  supplier          Supplier        @relation(fields: [supplierId], references: [id])
+  status            String          @default("DRAFT")
+  startDate         DateTime
+  endDate           DateTime
+  terms             String?
+  attachmentUrl     String?
+  autoRenew         Boolean         @default(false)
+  renewalReminder   Boolean         @default(true)
+  reminderDays      Int             @default(30) // Days before expiry to send reminder
+  notes             String?
+  createdById       String
+  createdBy         User            @relation(fields: [createdById], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+// Enum values are now represented as strings in the models
+
+model SupplierPerformance {
+  id                String    @id @default(uuid())
+  supplierId        String
+  supplier          Supplier  @relation(fields: [supplierId], references: [id])
+  reviewDate        DateTime
+  reviewPeriodStart DateTime
+  reviewPeriodEnd   DateTime
+  qualityScore      Int       @default(3) // 1-5 rating
+  deliveryScore     Int       @default(3) // 1-5 rating
+  pricingScore      Int       @default(3) // 1-5 rating
+  communicationScore Int      @default(3) // 1-5 rating
+  overallScore      Int       @default(3) // 1-5 rating
+  onTimeDeliveryRate Float?   // Percentage of on-time deliveries
+  defectRate        Float?    // Percentage of defective items
+  responseTime      Int?      // Average response time in hours
+  orderAccuracyRate Float?    // Percentage of accurate orders
+  strengths         String?
+  weaknesses        String?
+  improvementPlan   String?
+  reviewedById      String?
+  reviewedByName    String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SupplierContact {
+  id                String    @id @default(uuid())
+  supplierId        String
+  supplier          Supplier  @relation(fields: [supplierId], references: [id])
+  name              String
+  title             String?
+  department        String?
+  email             String?
+  phone             String?
+  mobile            String?
+  isPrimary         Boolean   @default(false)
+  notes             String?
+  lastContactDate   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SupplierDocument {
+  id                String    @id @default(uuid())
+  supplierId        String
+  supplier          Supplier  @relation(fields: [supplierId], references: [id])
+  documentType      String    // Contract, Certificate, Invoice, etc.
+  name              String
+  description       String?
+  fileUrl           String
+  fileSize          Int?      // Size in bytes
+  fileType          String?   // MIME type
+  expiryDate        DateTime?
+  issuedDate        DateTime?
+  issuedBy          String?
+  documentNumber    String?
+  status            String    @default("active") // active, expired, revoked
+  tagsJson          String?   // Store tags as JSON string
+  uploadedById      String?
+  uploadedByName    String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model InwardEntry {
+  id                String        @id @default(uuid())
+  warehouseId       String?
+  itemId            String?
+  warehouseItem     WarehouseItem? @relation(fields: [itemId], references: [id])
+  inventoryItemId   String?
+  inventoryItem     InventoryItem? @relation("InventoryInwardEntries", fields: [inventoryItemId], references: [id])
+  supplierId        String
+  supplier          Supplier      @relation(fields: [supplierId], references: [id])
+  quantity          Int
+  unitCost          Float
+  totalCost         Float
+  receivedById      String
+  receivedBy        User          @relation("ReceivedInwardEntries", fields: [receivedById], references: [id])
+  receivedDate      DateTime
+  batchNumber       String?
+  invoiceNumber     String?
+  notes             String?
+  status            String        @default("received") // pending, received, rejected
+  destination       String        @default("warehouse") // warehouse, inventory
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model OutwardEntry {
+  id                String        @id @default(uuid())
+  warehouseId       String?
+  itemId            String?
+  warehouseItem     WarehouseItem? @relation(fields: [itemId], references: [id])
+  inventoryItemId   String?
+  inventoryItem     InventoryItem? @relation("InventoryOutwardEntries", fields: [inventoryItemId], references: [id])
+  quantity          Int
+  destination       String
+  transferredById   String
+  transferredBy     User          @relation("TransferredOutwardEntries", fields: [transferredById], references: [id])
+  transferDate      DateTime
+  referenceNumber   String?
+  status            String        @default("completed") // pending, completed, cancelled
+  notes             String?
+  source            String        @default("warehouse") // warehouse, inventory
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model DamageEntry {
+  id                String        @id @default(uuid())
+  warehouseId       String
+  itemId            String
+  warehouseItem     WarehouseItem @relation(fields: [itemId], references: [id])
+  quantity          Int
+  reason            String
+  reportedById      String
+  reportedBy        User          @relation("ReportedDamageEntries", fields: [reportedById], references: [id])
+  reportedDate      DateTime
+  status            String        @default("pending") // pending, approved, rejected
+  approvedById      String?
+  approvedBy        User?         @relation("ApprovedDamageEntries", fields: [approvedById], references: [id])
+  approvedDate      DateTime?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model ClosingStock {
+  id                String        @id @default(uuid())
+  warehouseId       String
+  itemId            String
+  warehouseItem     WarehouseItem @relation(fields: [itemId], references: [id])
+  date              DateTime
+  openingQuantity   Int
+  inwardQuantity    Int
+  outwardQuantity   Int
+  damageQuantity    Int
+  adjustmentQuantity Int
+  closingQuantity   Int
+  unitPrice         Float
+  totalValue        Float
+  createdById       String
+  createdBy         User          @relation("CreatedClosingStocks", fields: [createdById], references: [id])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([itemId, date])
+}
+
+model InventoryAudit {
+  id                String              @id @default(uuid())
+  locationId        String              // Inventory location ID
+  location          Location            @relation(fields: [locationId], references: [id])
+  auditDate         DateTime
+  conductedById     String
+  conductedBy       User                @relation(fields: [conductedById], references: [id])
+  itemsAudited      Int                 @default(0)
+  discrepanciesFound Int                @default(0)
+  status            String              @default("completed") // pending, completed, cancelled
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  auditItems        InventoryAuditItem[]
+}
+
+model InventoryAuditItem {
+  id                String          @id @default(uuid())
+  auditId           String
+  audit             InventoryAudit  @relation(fields: [auditId], references: [id])
+  inventoryItemId   String
+  inventoryItem     InventoryItem   @relation(fields: [inventoryItemId], references: [id])
+  expectedQuantity  Int
+  actualQuantity    Int
+  discrepancy       Int
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model InventoryAdjustment {
+  id                String          @id @default(uuid())
+  inventoryItemId   String
+  previousQuantity  Int
+  newQuantity       Int
+  adjustmentQuantity Int
+  reason            String
+  adjustedById      String
+  adjustmentDate    DateTime
+}
+
+model UserPermission {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  module            String    // dashboard, warehouse, inventory, suppliers, categories, audit, admin, reports
+  action            String    // view, create, edit, delete, approve, export
+  resource          String    // specific resource within module (e.g., items, inward, outward)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, module, action, resource])
+}
+
+model PermissionTemplate {
+  id                String    @id @default(uuid())
+  name              String    @unique
+  description       String?
+  permissions       String    // JSON string of permissions
+  isDefault         Boolean   @default(false)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
