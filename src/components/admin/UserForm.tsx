@@ -6,13 +6,7 @@ import {
   FaLock,
   FaIdCard,
   FaUserTag,
-  FaShieldAlt,
-  FaCheck,
-  FaTimes,
-  FaLayerGroup,
-  FaClipboardList,
-  FaSave,
-  FaFileDownload
+  FaLayerGroup
 } from 'react-icons/fa';
 import { FormField, FormSection, FormActions } from '../ui/forms';
 import { useAuth } from '../../contexts/AuthContext';
@@ -475,40 +469,55 @@ const UserForm: React.FC = () => {
           description="Basic user account details"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              label="Username"
-              name="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-              icon={<FaUser className="text-gray-400" />}
-              error={errors.username}
-              required
-              disabled={isEditMode} // Username cannot be changed in edit mode
-            />
+            <div className="relative">
+              <FormField
+                label="Username"
+                name="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter username"
+                className="pl-10"
+                error={errors.username}
+                required
+                disabled={isEditMode} // Username cannot be changed in edit mode
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                <FaUser className="text-gray-400" />
+              </div>
+            </div>
 
-            <FormField
-              label="Email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email address"
-              icon={<FaEnvelope className="text-gray-400" />}
-              error={errors.email}
-              required
-            />
+            <div className="relative">
+              <FormField
+                label="Email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="pl-10"
+                error={errors.email}
+                required
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                <FaEnvelope className="text-gray-400" />
+              </div>
+            </div>
 
-            <FormField
-              label="Full Name"
-              name="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Enter full name"
-              icon={<FaIdCard className="text-gray-400" />}
-              error={errors.fullName}
-              required
-            />
+            <div className="relative">
+              <FormField
+                label="Full Name"
+                name="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter full name"
+                className="pl-10"
+                error={errors.fullName}
+                required
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                <FaIdCard className="text-gray-400" />
+              </div>
+            </div>
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
@@ -542,29 +551,39 @@ const UserForm: React.FC = () => {
 
           {!isEditMode && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <FormField
-                label="Password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                icon={<FaLock className="text-gray-400" />}
-                error={errors.password}
-                required
-              />
+              <div className="relative">
+                <FormField
+                  label="Password"
+                  name="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="pl-10"
+                  error={errors.password}
+                  required
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                  <FaLock className="text-gray-400" />
+                </div>
+              </div>
 
-              <FormField
-                label="Confirm Password"
-                name="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                icon={<FaLock className="text-gray-400" />}
-                error={errors.confirmPassword}
-                required
-              />
+              <div className="relative">
+                <FormField
+                  label="Confirm Password"
+                  name="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className="pl-10"
+                  error={errors.confirmPassword}
+                  required
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                  <FaLock className="text-gray-400" />
+                </div>
+              </div>
             </div>
           )}
 

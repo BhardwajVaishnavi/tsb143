@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   FaUser,
   FaEnvelope,
-  FaIdCard,
   FaUserTag,
   FaCalendarAlt,
   FaClock,

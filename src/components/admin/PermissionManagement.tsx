@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   FaLayerGroup,
   FaPlus,
   FaEdit,
   FaTrash,
   FaClone,
-  FaSearch,
-  FaShieldAlt,
-  FaSave,
-  FaTimes
+  FaSearch
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { FormField, FormSection, FormActions } from '../ui/forms';
@@ -42,13 +38,12 @@ type Permission = {
 };
 
 const PermissionManagement: React.FC = () => {
-  const navigate = useNavigate();
   const { user, logActivity } = useAuth();
-  
+
   const [templates, setTemplates] = useState<PermissionTemplate[]>([]);
   const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Form state for creating/editing templates
   const [isEditing, setIsEditing] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -57,16 +52,16 @@ const PermissionManagement: React.FC = () => {
   const [selectedPermissions, setSelectedPermissions] = useState<Array<{ module: string; action: string; resource: string; }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModule, setFilterModule] = useState<string>('');
-  
+
   // Load templates and permissions
   useEffect(() => {
     // Generate permissions from constants
     const generatedPermissions: Permission[] = [];
-    
+
     // For each module
     Object.entries(PERMISSION_MODULES).forEach(([moduleKey, moduleValue]) => {
       // For each action
@@ -75,7 +70,7 @@ const PermissionManagement: React.FC = () => {
         const relevantResources = Object.entries(PERMISSION_RESOURCES)
           .filter(([resourceKey]) => resourceKey.startsWith(moduleKey))
           .map(([_, resourceValue]) => resourceValue);
-        
+
         // If no specific resources, add a wildcard permission
         if (relevantResources.length === 0) {
           generatedPermissions.push({
@@ -104,7 +99,7 @@ const PermissionManagement: React.FC = () => {
         }
       });
     });
-    
+
     // Add special all permissions
     generatedPermissions.push({
       id: 'all_permissions',
@@ -115,9 +110,9 @@ const PermissionManagement: React.FC = () => {
       action: '*',
       resource: '*'
     });
-    
+
     setAvailablePermissions(generatedPermissions);
-    
+
     // Generate permission templates from constants
     const generatedTemplates: PermissionTemplate[] = Object.entries(PERMISSION_TEMPLATES).map(([key, value]) => ({
       id: value,
@@ -128,14 +123,14 @@ const PermissionManagement: React.FC = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }));
-    
+
     // Simulate API call to fetch templates
     setTimeout(() => {
       setTemplates(generatedTemplates);
       setIsLoading(false);
     }, 1000);
   }, []);
-  
+
   // Group permissions by category
   const permissionsByCategory = availablePermissions.reduce((acc, permission) => {
     if (!acc[permission.category]) {
@@ -144,16 +139,16 @@ const PermissionManagement: React.FC = () => {
     acc[permission.category].push(permission);
     return acc;
   }, {} as Record<string, Permission[]>);
-  
+
   // Filter templates based on search query
   const filteredTemplates = templates.filter(template => {
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesSearch;
   });
-  
+
   // Start creating a new template
   const handleCreateNew = () => {
     setIsEditing(true);
@@ -163,7 +158,7 @@ const PermissionManagement: React.FC = () => {
     setSelectedPermissions([]);
     setErrors({});
   };
-  
+
   // Start editing an existing template
   const handleEdit = (template: PermissionTemplate) => {
     setIsEditing(true);
@@ -173,7 +168,7 @@ const PermissionManagement: React.FC = () => {
     setSelectedPermissions(template.permissions);
     setErrors({});
   };
-  
+
   // Clone an existing template
   const handleClone = (template: PermissionTemplate) => {
     setIsEditing(true);
@@ -183,14 +178,14 @@ const PermissionManagement: React.FC = () => {
     setSelectedPermissions([...template.permissions]);
     setErrors({});
   };
-  
+
   // Delete a template
   const handleDelete = (templateId: string) => {
     if (window.confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
       // Filter out the template to delete
       const updatedTemplates = templates.filter(t => t.id !== templateId);
       setTemplates(updatedTemplates);
-      
+
       // Log activity
       if (user) {
         logActivity(
@@ -202,7 +197,7 @@ const PermissionManagement: React.FC = () => {
       }
     }
   };
-  
+
   // Cancel editing
   const handleCancel = () => {
     setIsEditing(false);
@@ -212,13 +207,13 @@ const PermissionManagement: React.FC = () => {
     setSelectedPermissions([]);
     setErrors({});
   };
-  
+
   // Toggle permission selection
   const togglePermission = (permission: Permission) => {
     if (!permission.module || !permission.action || !permission.resource) {
       return;
     }
-    
+
     // Special case for all permissions
     if (permission.module === '*' && permission.action === '*' && permission.resource === '*') {
       if (selectedPermissions.some(p => p.module === '*' && p.action === '*' && p.resource === '*')) {
@@ -228,18 +223,18 @@ const PermissionManagement: React.FC = () => {
       }
       return;
     }
-    
+
     // If all permissions is selected and we're selecting another permission, remove all permissions
     if (selectedPermissions.some(p => p.module === '*' && p.action === '*' && p.resource === '*')) {
       setSelectedPermissions([{ module: permission.module, action: permission.action, resource: permission.resource }]);
       return;
     }
-    
+
     // Check if this permission is already selected
     const isSelected = selectedPermissions.some(
       p => p.module === permission.module && p.action === permission.action && p.resource === permission.resource
     );
-    
+
     if (isSelected) {
       // Remove the permission
       setSelectedPermissions(selectedPermissions.filter(
@@ -253,73 +248,73 @@ const PermissionManagement: React.FC = () => {
       ]);
     }
   };
-  
+
   // Check if a permission is selected
   const isPermissionSelected = (permission: Permission) => {
     if (!permission.module || !permission.action || !permission.resource) {
       return false;
     }
-    
+
     // If all permissions is selected, return true
     if (selectedPermissions.some(p => p.module === '*' && p.action === '*' && p.resource === '*')) {
       return true;
     }
-    
+
     // Check for module wildcard
     if (selectedPermissions.some(p => p.module === permission.module && p.action === '*' && p.resource === '*')) {
       return true;
     }
-    
+
     // Check for action wildcard
     if (selectedPermissions.some(p => p.module === permission.module && p.action === permission.action && p.resource === '*')) {
       return true;
     }
-    
+
     // Check for specific permission
     return selectedPermissions.some(
       p => p.module === permission.module && p.action === permission.action && p.resource === permission.resource
     );
   };
-  
+
   // Validate form
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!templateName) {
       newErrors.name = 'Template name is required';
     }
-    
+
     if (!templateDescription) {
       newErrors.description = 'Template description is required';
     }
-    
+
     if (selectedPermissions.length === 0) {
       newErrors.permissions = 'At least one permission must be selected';
     }
-    
+
     // Check for duplicate name
     const isDuplicateName = templates.some(
       t => t.id !== editingTemplateId && t.name.toLowerCase() === templateName.toLowerCase()
     );
-    
+
     if (isDuplicateName) {
       newErrors.name = 'A template with this name already exists';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     // Create template object
     const templateData: PermissionTemplate = {
       id: editingTemplateId || `template-${Date.now()}`,
@@ -330,16 +325,16 @@ const PermissionManagement: React.FC = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     // Simulate API call to create/update template
     setTimeout(() => {
       if (editingTemplateId) {
         // Update existing template
-        const updatedTemplates = templates.map(t => 
+        const updatedTemplates = templates.map(t =>
           t.id === editingTemplateId ? templateData : t
         );
         setTemplates(updatedTemplates);
-        
+
         // Log activity
         if (user) {
           logActivity(
@@ -352,7 +347,7 @@ const PermissionManagement: React.FC = () => {
       } else {
         // Add new template
         setTemplates([...templates, templateData]);
-        
+
         // Log activity
         if (user) {
           logActivity(
@@ -363,7 +358,7 @@ const PermissionManagement: React.FC = () => {
           );
         }
       }
-      
+
       setIsSubmitting(false);
       setIsEditing(false);
       setEditingTemplateId(null);
@@ -372,7 +367,7 @@ const PermissionManagement: React.FC = () => {
       setSelectedPermissions([]);
     }, 1500);
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -380,7 +375,7 @@ const PermissionManagement: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
@@ -402,7 +397,7 @@ const PermissionManagement: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       {isEditing ? (
         <form onSubmit={handleSubmit}>
           <FormSection
@@ -410,30 +405,40 @@ const PermissionManagement: React.FC = () => {
             description="Basic template details"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="Template Name"
-                name="templateName"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Enter template name"
-                icon={<FaLayerGroup className="text-gray-400" />}
-                error={errors.name}
-                required
-              />
-              
-              <FormField
-                label="Description"
-                name="templateDescription"
-                value={templateDescription}
-                onChange={(e) => setTemplateDescription(e.target.value)}
-                placeholder="Enter template description"
-                icon={<FaShieldAlt className="text-gray-400" />}
-                error={errors.description}
-                required
-              />
+              <div className="relative">
+                <FormField
+                  label="Template Name"
+                  name="templateName"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Enter template name"
+                  className="pl-10"
+                  error={errors.name}
+                  required
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                  <FaLayerGroup className="text-gray-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <FormField
+                  label="Description"
+                  name="templateDescription"
+                  value={templateDescription}
+                  onChange={(e) => setTemplateDescription(e.target.value)}
+                  placeholder="Enter template description"
+                  className="pl-10"
+                  error={errors.description}
+                  required
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                  <FaLayerGroup className="text-gray-400" />
+                </div>
+              </div>
             </div>
           </FormSection>
-          
+
           <FormSection
             title="Permissions"
             description="Select the permissions for this template"
@@ -441,7 +446,7 @@ const PermissionManagement: React.FC = () => {
             {errors.permissions && (
               <div className="mb-4 text-sm text-red-600">{errors.permissions}</div>
             )}
-            
+
             <div className="mb-4">
               <label htmlFor="filterModule" className="block text-sm font-medium text-gray-700 mb-1">
                 Filter by Module
@@ -455,7 +460,7 @@ const PermissionManagement: React.FC = () => {
                   className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 >
                   <option value="">All Modules</option>
-                  {Object.entries(PERMISSION_MODULES).map(([key, value]) => (
+                  {Object.entries(PERMISSION_MODULES).map(([key, _value]) => (
                     <option key={key} value={key}>
                       {key.charAt(0).toUpperCase() + key.slice(1)}
                     </option>
@@ -466,7 +471,7 @@ const PermissionManagement: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               {Object.entries(permissionsByCategory)
                 .filter(([category]) => !filterModule || category.toLowerCase().includes(filterModule.toLowerCase()))
@@ -503,7 +508,7 @@ const PermissionManagement: React.FC = () => {
               ))}
             </div>
           </FormSection>
-          
+
           <FormActions
             submitText={editingTemplateId ? 'Update Template' : 'Create Template'}
             cancelText="Cancel"
@@ -527,7 +532,7 @@ const PermissionManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-200">
               {filteredTemplates.length > 0 ? (

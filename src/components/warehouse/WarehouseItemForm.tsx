@@ -634,15 +634,20 @@ const WarehouseItemForm = () => {
           defaultExpanded={isEditMode}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              label="Barcode"
-              name="barcode"
-              value={formData.barcode || ''}
-              onChange={handleChange}
-              placeholder="Enter barcode number"
-              helpText="Product barcode or UPC"
-              icon={<FaBarcode />}
-            />
+            <div className="relative">
+              <FormField
+                label="Barcode"
+                name="barcode"
+                value={formData.barcode || ''}
+                onChange={handleChange}
+                placeholder="Enter barcode number"
+                helpText="Product barcode or UPC"
+                className="pl-10"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" style={{top: '30px'}}>
+                <FaBarcode className="text-gray-400" />
+              </div>
+            </div>
 
             <FormField
               label="Batch Number"
