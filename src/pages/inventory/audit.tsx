@@ -137,7 +137,14 @@ const InventoryAuditPage = () => {
                     {auditHistory.map((audit) => (
                       <tr key={audit.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {format(new Date(audit.auditDate), 'PPP')}
+                          {(() => {
+                            try {
+                              return format(new Date(audit.auditDate), 'PPP');
+                            } catch (error) {
+                              console.error('Error formatting date:', error, audit.auditDate);
+                              return 'Invalid date';
+                            }
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {audit.location?.name || 'Unknown Location'}

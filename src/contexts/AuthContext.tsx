@@ -18,7 +18,7 @@ const mockUsers = [
     email: 'admin@example.com',
     password: 'admin123', // In a real app, passwords would be hashed
     fullName: 'Admin User',
-    role: 'admin',
+    role: 'ADMIN', // Ensure role is uppercase for consistency
     avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
     lastLogin: new Date().toISOString(),
     createdAt: '2023-01-01T00:00:00Z',
@@ -169,10 +169,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Token validated successfully, user:', userInfo.fullName || userInfo.username || 'Unknown');
 
             // Token is valid - update with latest user data from server
+            // Normalize the role to ensure it's properly formatted
+            let normalizedRole = userInfo.role || 'user';
+            // If role is not a string, convert it to a string
+            if (typeof normalizedRole !== 'string') {
+              normalizedRole = String(normalizedRole);
+            }
+            // Ensure role is uppercase for consistency
+            normalizedRole = normalizedRole.toUpperCase();
+
+            console.log('Normalized role:', normalizedRole);
+
             const formattedUser = {
               ...user,
               ...userInfo,
-              role: (userInfo.role || 'user').toUpperCase(), // Ensure role is uppercase for consistency
+              role: normalizedRole,
               lastLogin: new Date().toISOString()
             };
 
@@ -244,11 +255,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error('Authentication failed: No token received');
         }
 
+        // Normalize the role to ensure it's properly formatted
+        let normalizedRole = userInfo.role || 'user';
+        // If role is not a string, convert it to a string
+        if (typeof normalizedRole !== 'string') {
+          normalizedRole = String(normalizedRole);
+        }
+        // Ensure role is uppercase for consistency
+        normalizedRole = normalizedRole.toUpperCase();
+
+        console.log('API login - Normalized role:', normalizedRole);
+
         // Ensure role is properly formatted
         const formattedUserData = {
           ...userInfo,
           token: token,
-          role: (userInfo.role || 'user').toUpperCase() // Ensure role is uppercase for consistency
+          role: normalizedRole
         };
 
         console.log('Storing user data in localStorage with token');
@@ -293,11 +315,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Create a token for the mock user
           const mockToken = 'mock-token-' + Date.now();
 
+          // Normalize the role to ensure it's properly formatted
+          let normalizedRole = mockUser.role || 'user';
+          // If role is not a string, convert it to a string
+          if (typeof normalizedRole !== 'string') {
+            normalizedRole = String(normalizedRole);
+          }
+          // Ensure role is uppercase for consistency
+          normalizedRole = normalizedRole.toUpperCase();
+
+          console.log('Mock login - Normalized role:', normalizedRole);
+
           // Format the user data
           const formattedUserData = {
             ...mockUser,
             token: mockToken,
-            role: mockUser.role.toUpperCase() // Ensure role is uppercase for consistency
+            role: normalizedRole
           };
 
           console.log('Mock login successful for:', formattedUserData.fullName);

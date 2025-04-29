@@ -36,10 +36,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check if user has required role (case-insensitive)
-  const userRole = (user.role as string).toUpperCase();
-  const upperCaseAllowedRoles = allowedRoles.map(role => role.toUpperCase());
+  // Ensure user.role is a string and normalize it
+  const userRole = typeof user.role === 'string'
+    ? user.role.toUpperCase()
+    : String(user.role).toUpperCase();
 
-  if (!upperCaseAllowedRoles.includes(userRole)) {
+  console.log('User role:', userRole);
+  console.log('User role type:', typeof user.role);
+  console.log('Allowed roles:', allowedRoles);
+
+  // Convert allowed roles to uppercase for case-insensitive comparison
+  const upperCaseAllowedRoles = allowedRoles.map(role =>
+    typeof role === 'string' ? role.toUpperCase() : String(role).toUpperCase()
+  );
+
+  console.log('Uppercase allowed roles:', upperCaseAllowedRoles);
+  console.log('Role check result:', upperCaseAllowedRoles.includes(userRole));
+
+  // Special case for ADMIN role - always allow access
+  if (userRole === 'ADMIN') {
+    console.log('Admin role detected, granting access');
+    // Admin role has access to everything
+  } else if (!upperCaseAllowedRoles.includes(userRole)) {
+    console.log('Access denied for role:', userRole);
     return <Navigate to="/unauthorized" replace />;
   }
 

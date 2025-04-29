@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 // Pages
 import Login from './pages/auth/LoginPage';
 import Unauthorized from './pages/Unauthorized';
+import AuthDebug from './pages/AuthDebug';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Layout Components
@@ -60,6 +61,7 @@ function App() {
           {/* Public routes */}
           <Route path="/auth/login" element={<Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/auth/debug" element={<AuthDebug />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>

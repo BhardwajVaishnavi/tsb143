@@ -474,9 +474,9 @@ const getMockData = (url: string, _data?: any): any => {
       username: 'admin',
       email: 'admin@example.com',
       fullName: 'Admin User',
-      role: 'admin',
+      role: 'ADMIN', // Ensure role is uppercase for consistency
       status: 'active',
-      permissions: ['all'],
+      permissions: [{ module: '*', action: '*', resource: '*' }],
       createdAt: '2023-01-01T00:00:00Z',
       lastLogin: '2023-06-14T09:15:00Z'
     };

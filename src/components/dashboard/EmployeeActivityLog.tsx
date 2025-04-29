@@ -240,7 +240,14 @@ const EmployeeActivityLog: React.FC = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                    {(() => {
+                      try {
+                        return formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true });
+                      } catch (error) {
+                        console.error('Error formatting date:', error, activity.timestamp);
+                        return 'Invalid date';
+                      }
+                    })()}
                   </td>
                 </tr>
               ))}

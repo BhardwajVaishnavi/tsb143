@@ -19,6 +19,10 @@ const Unauthorized: React.FC = () => {
               Sorry, <span className="font-medium">{user.fullName}</span>, you don't have permission to access this page.
               <br />
               Your role ({user.role}) doesn't have the required permissions.
+              <br />
+              <span className="text-xs text-gray-500 mt-2 block">
+                Debug info: Role type: {typeof user.role}, Role value: "{user.role}"
+              </span>
             </>
           ) : (
             'You need to be logged in with appropriate permissions to access this page.'

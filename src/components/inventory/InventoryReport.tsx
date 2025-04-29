@@ -97,8 +97,22 @@ const InventoryReport = () => {
   const { user, logActivity } = useAuth();
   // State
   const [reportType, setReportType] = useState<'inventory-status' | 'movement-analysis' | 'value-report'>('inventory-status');
-  const [startDate, setStartDate] = useState<string>(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState<string>(() => {
+    try {
+      return format(subDays(new Date(), 30), 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error formatting start date:', error);
+      return '2023-01-01';
+    }
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    try {
+      return format(new Date(), 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error formatting end date:', error);
+      return '2023-12-31';
+    }
+  });
   const [locationId, setLocationId] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string>('');
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -183,7 +197,7 @@ const InventoryReport = () => {
         csvContent += `"${item.productName}","${item.category}",${item.quantity},${item.unitPrice.toFixed(2)},${item.totalValue.toFixed(2)},"${item.location}",${item.lowStockThreshold || 0}\n`;
       });
 
-      filename = `inventory-status-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      filename = `inventory-status-report-${new Date().toISOString().split('T')[0]}.csv`;
     } else if (reportData.reportType === 'movement-analysis') {
       // Headers
       csvContent = 'Product Name,Category,Inward Quantity,Outward Quantity,Net Change\n';
@@ -193,7 +207,7 @@ const InventoryReport = () => {
         csvContent += `"${item.productName}","${item.category}",${item.inwardQuantity},${item.outwardQuantity},${item.netChange}\n`;
       });
 
-      filename = `inventory-movement-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      filename = `inventory-movement-report-${new Date().toISOString().split('T')[0]}.csv`;
     } else if (reportData.reportType === 'value-report') {
       // Headers
       csvContent = 'Product Name,Category,Quantity,Unit Price,Total Value,Location\n';
@@ -203,7 +217,7 @@ const InventoryReport = () => {
         csvContent += `"${item.productName}","${item.category}",${item.quantity},${item.unitPrice.toFixed(2)},${item.totalValue.toFixed(2)},"${item.location}"\n`;
       });
 
-      filename = `inventory-value-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      filename = `inventory-value-report-${new Date().toISOString().split('T')[0]}.csv`;
     }
 
     // Create and download the file
@@ -407,7 +421,14 @@ const InventoryReport = () => {
                 {reportType === 'value-report' && 'Inventory Value Report'}
               </h3>
               <p className="text-sm text-gray-500">
-                Generated on {format(new Date(reportData.generatedAt), 'PPP p')}
+                Generated on {(() => {
+                  try {
+                    return format(new Date(reportData.generatedAt), 'PPP p');
+                  } catch (error) {
+                    console.error('Error formatting generated date:', error, reportData.generatedAt);
+                    return 'Unknown date';
+                  }
+                })()}
               </p>
             </div>
 
