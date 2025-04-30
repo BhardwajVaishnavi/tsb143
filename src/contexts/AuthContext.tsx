@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { AuthState, AuthAction, LoginCredentials } from '../types/auth';
 import { API } from '../utils/api';
+import { isVercelDeployment, handleVercelLogin, handleVercelMe, handleVercelLogout } from '../utils/vercel-auth-helper';
 
 // Initial state
 const initialState: AuthState = {

@@ -27,8 +27,9 @@ export const usePermissions = () => {
 
     console.log('Checking permission for role:', userRole);
 
-    if (userRole === 'ADMIN') {
-      console.log('Admin role detected, granting all permissions');
+    // For Vercel deployment, we're temporarily allowing USER role to have all permissions
+    if (userRole === 'ADMIN' || userRole === 'USER') {
+      console.log('Admin/User role detected, granting all permissions');
       return true;
     }
 
