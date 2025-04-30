@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FaUserPlus, 
-  FaUserEdit, 
-  FaTrash, 
-  FaSearch, 
-  FaFilter,
+import {
+  FaUserPlus,
+  FaUserEdit,
+  FaTrash,
+  FaSearch,
   FaEye,
-  FaEyeSlash,
   FaLock,
   FaUnlock,
   FaUserShield
 } from 'react-icons/fa';
-import { FormField, FormSection, FormActions } from '../ui/forms';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiProxy } from '../../utils/api-proxy';
 
 type User = {
   id: string;
@@ -30,147 +28,149 @@ type User = {
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
   const { user, logActivity } = useAuth();
-  
+
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  
-  // Mock data loading
+
+  // Load user data from API
   useEffect(() => {
-    // Simulate API call to fetch users
-    setTimeout(() => {
-      const mockUsers: User[] = [
-        {
-          id: 'user-1',
-          username: 'admin',
-          email: 'admin@example.com',
-          fullName: 'Admin User',
-          role: 'admin',
-          status: 'active',
-          permissions: ['all'],
-          createdAt: '2023-01-01T00:00:00Z',
-          lastLogin: '2023-06-15T10:30:00Z'
-        },
-        {
-          id: 'user-2',
-          username: 'warehouse_manager',
-          email: 'warehouse@example.com',
-          fullName: 'Warehouse Manager',
-          role: 'warehouse_manager',
-          status: 'active',
-          permissions: ['warehouse_read', 'warehouse_write', 'inventory_read'],
-          createdAt: '2023-02-15T00:00:00Z',
-          lastLogin: '2023-06-14T09:15:00Z'
-        },
-        {
-          id: 'user-3',
-          username: 'inventory_manager',
-          email: 'inventory@example.com',
-          fullName: 'Inventory Manager',
-          role: 'inventory_manager',
-          status: 'active',
-          permissions: ['inventory_read', 'inventory_write'],
-          createdAt: '2023-03-10T00:00:00Z',
-          lastLogin: '2023-06-13T14:45:00Z'
-        },
-        {
-          id: 'user-4',
-          username: 'viewer',
-          email: 'viewer@example.com',
-          fullName: 'View Only User',
-          role: 'viewer',
-          status: 'active',
-          permissions: ['warehouse_read', 'inventory_read', 'reports_read'],
-          createdAt: '2023-04-05T00:00:00Z',
-          lastLogin: '2023-06-10T11:20:00Z'
-        },
-        {
-          id: 'user-5',
-          username: 'inactive_user',
-          email: 'inactive@example.com',
-          fullName: 'Inactive User',
-          role: 'viewer',
-          status: 'inactive',
-          permissions: ['warehouse_read'],
-          createdAt: '2023-05-20T00:00:00Z'
-        }
-      ];
-      
-      setUsers(mockUsers);
-      setFilteredUsers(mockUsers);
-      setIsLoading(false);
-    }, 1000);
+    const fetchUsers = async () => {
+      try {
+        const data = await apiProxy.get<User[]>('/api/users');
+
+        // Ensure roles are properly formatted
+        const formattedUsers = data.map((user: any) => ({
+          ...user,
+          role: typeof user.role === 'string' ? user.role.toUpperCase() : 'USER',
+          permissions: Array.isArray(user.permissions) ? user.permissions : []
+        }));
+
+        setUsers(formattedUsers);
+        setFilteredUsers(formattedUsers);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        // Fallback to empty array if everything fails
+        setUsers([]);
+        setFilteredUsers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
   }, []);
-  
+
   // Filter users based on search term, role, and status
   useEffect(() => {
     let filtered = [...users];
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(user => 
+      filtered = filtered.filter(user =>
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.fullName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (roleFilter) {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
-    
+
     if (statusFilter) {
       filtered = filtered.filter(user => user.status === statusFilter);
     }
-    
+
     setFilteredUsers(filtered);
   }, [searchTerm, roleFilter, statusFilter, users]);
-  
+
   // Handle user status change
-  const handleStatusChange = (userId: string, newStatus: 'active' | 'inactive') => {
-    const updatedUsers = users.map(user => {
-      if (user.id === userId) {
-        return { ...user, status: newStatus };
-      }
-      return user;
-    });
-    
-    setUsers(updatedUsers);
-    
-    // Log activity
-    if (user) {
-      logActivity(
-        'user_status_change',
-        `Changed user status to ${newStatus}`,
-        'user',
-        userId
-      );
-    }
-  };
-  
-  // Handle user deletion
-  const handleDeleteUser = (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      const updatedUsers = users.filter(user => user.id !== userId);
+  const handleStatusChange = async (userId: string, newStatus: 'active' | 'inactive') => {
+    try {
+      // Find the user to update
+      const userToUpdate = users.find(u => u.id === userId);
+      if (!userToUpdate) return;
+
+      // Update the user status via API
+      await apiProxy.put(`/api/users/${userId}`, {
+        ...userToUpdate,
+        status: newStatus
+      });
+
+      // Update local state
+      const updatedUsers = users.map(user => {
+        if (user.id === userId) {
+          return { ...user, status: newStatus };
+        }
+        return user;
+      });
+
       setUsers(updatedUsers);
-      
+      setFilteredUsers(updatedUsers.filter(user =>
+        (searchTerm === '' ||
+          user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.fullName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (roleFilter === '' || user.role === roleFilter) &&
+        (statusFilter === '' || user.status === statusFilter)
+      ));
+
       // Log activity
       if (user) {
         logActivity(
-          'user_delete',
-          'Deleted user',
+          'user_status_change',
+          `Changed user status to ${newStatus}`,
           'user',
           userId
         );
       }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Failed to update user status. Please try again.');
     }
   };
-  
+
+  // Handle user deletion
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        // Delete the user via API
+        await apiProxy.delete(`/api/users/${userId}`);
+
+        // Update local state
+        const updatedUsers = users.filter(user => user.id !== userId);
+        setUsers(updatedUsers);
+        setFilteredUsers(updatedUsers.filter(user =>
+          (searchTerm === '' ||
+            user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.fullName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+          (roleFilter === '' || user.role === roleFilter) &&
+          (statusFilter === '' || user.status === statusFilter)
+        ));
+
+        // Log activity
+        if (user) {
+          logActivity(
+            'user_delete',
+            'Deleted user',
+            'user',
+            userId
+          );
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Failed to delete user. Please try again.');
+      }
+    }
+  };
+
   // Get unique roles for filtering
   const roles = Array.from(new Set(users.map(user => user.role)));
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -178,7 +178,7 @@ const UserManagement: React.FC = () => {
       </div>
     );
   }
-  
+
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
@@ -198,7 +198,7 @@ const UserManagement: React.FC = () => {
           </button>
         </div>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-200">
           <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
@@ -214,7 +214,7 @@ const UserManagement: React.FC = () => {
                 <FaSearch className="absolute left-3 top-3 text-gray-400" />
               </div>
             </div>
-            
+
             <div className="w-full md:w-48">
               <select
                 value={roleFilter}
@@ -227,7 +227,7 @@ const UserManagement: React.FC = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="w-full md:w-48">
               <select
                 value={statusFilter}
@@ -241,7 +241,7 @@ const UserManagement: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -285,8 +285,8 @@ const UserManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
+                      user.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800'
                         : user.role === 'warehouse_manager'
                           ? 'bg-blue-100 text-blue-800'
                           : user.role === 'inventory_manager'
@@ -298,8 +298,8 @@ const UserManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
+                      user.status === 'active'
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {user.status}
@@ -309,8 +309,8 @@ const UserManagement: React.FC = () => {
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLogin 
-                      ? new Date(user.lastLogin).toLocaleDateString() 
+                    {user.lastLogin
+                      ? new Date(user.lastLogin).toLocaleDateString()
                       : 'Never'
                     }
                   </td>
@@ -332,12 +332,12 @@ const UserManagement: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleStatusChange(
-                          user.id, 
+                          user.id,
                           user.status === 'active' ? 'inactive' : 'active'
                         )}
                         className={`${
-                          user.status === 'active' 
-                            ? 'text-yellow-600 hover:text-yellow-900' 
+                          user.status === 'active'
+                            ? 'text-yellow-600 hover:text-yellow-900'
                             : 'text-green-600 hover:text-green-900'
                         }`}
                         title={user.status === 'active' ? 'Deactivate User' : 'Activate User'}
@@ -358,7 +358,7 @@ const UserManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
+
         {filteredUsers.length === 0 && (
           <div className="py-8 text-center text-gray-500">
             <FaUserShield className="mx-auto h-12 w-12 text-gray-300 mb-3" />

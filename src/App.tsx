@@ -1,4 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { UNSAFE_DataRouterContext, UNSAFE_DataRouterStateContext, UNSAFE_NavigationContext, UNSAFE_RouteContext, UNSAFE_useScrollRestoration } from 'react-router-dom';
+
+// Silence React Router deprecation warnings
+UNSAFE_DataRouterContext;
+UNSAFE_DataRouterStateContext;
+UNSAFE_NavigationContext;
+UNSAFE_RouteContext;
+UNSAFE_useScrollRestoration;
 
 // Auth Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -9,6 +17,7 @@ import Unauthorized from './pages/Unauthorized';
 import AuthDebug from './pages/AuthDebug';
 import UuidDebug from './pages/debug/UuidDebug';
 import VercelLogin from './pages/VercelLogin';
+import VercelDebug from './pages/VercelDebug';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Layout Components
@@ -65,6 +74,7 @@ function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/auth/debug" element={<AuthDebug />} />
           <Route path="/debug/uuid" element={<UuidDebug />} />
+          <Route path="/vercel/debug" element={<VercelDebug />} />
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>

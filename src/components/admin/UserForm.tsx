@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { apiProxy } from '../../utils/api-proxy';
 import {
   FaUser,
   FaEnvelope,
@@ -142,88 +143,85 @@ const UserForm: React.FC = () => {
 
     // If in edit mode, load user data
     if (isEditMode) {
-      // Simulate API call to fetch user data
-      setTimeout(() => {
-        // Mock user data
-        const mockUser: User = {
-          id: 'user-2',
-          username: 'warehouse_manager',
-          email: 'warehouse@example.com',
-          fullName: 'Warehouse Manager',
-          role: 'warehouse_manager',
-          status: 'active',
-          permissions: [
-            { module: 'warehouse', action: 'view', resource: '*' },
-            { module: 'warehouse', action: 'create', resource: 'items' },
-            { module: 'warehouse', action: 'edit', resource: 'items' },
-            { module: 'warehouse', action: 'create', resource: 'inward' },
-            { module: 'warehouse', action: 'create', resource: 'outward' },
-            { module: 'inventory', action: 'view', resource: '*' }
-          ],
-          createdAt: '2023-02-15T00:00:00Z',
-          lastLogin: '2023-06-14T09:15:00Z'
-        };
+      const fetchUserData = async () => {
+        try {
+          // Fetch user data from API
+          const userData = await apiProxy.get<User>(`/api/users/${id}`);
 
-        setUsername(mockUser.username);
-        setEmail(mockUser.email);
-        setFullName(mockUser.fullName);
-        setRole(mockUser.role);
-        setStatus(mockUser.status);
+          // Set form fields
+          setUsername(userData.username);
+          setEmail(userData.email);
+          setFullName(userData.fullName);
+          setRole(typeof userData.role === 'string' ? userData.role.toLowerCase() : 'custom');
+          setStatus(userData.status || 'active');
 
-        // Convert permissions if they're in the old string format
-        const formattedPermissions = mockUser.permissions.map(p => {
-          if (typeof p === 'string') {
-            // Handle special case for 'all' permission
-            if (p === 'all') {
-              return { module: '*', action: '*', resource: '*' };
+          // Convert permissions if they're in the old string format
+          const formattedPermissions = userData.permissions.map((p: any) => {
+            if (typeof p === 'string') {
+              // Handle special case for 'all' permission
+              if (p === 'all') {
+                return { module: '*', action: '*', resource: '*' };
+              }
+
+              // Try to parse the permission string (e.g., 'warehouse_view')
+              const parts = p.split('_');
+              if (parts.length >= 2) {
+                return {
+                  module: parts[0],
+                  action: parts[1],
+                  resource: parts.length > 2 ? parts.slice(2).join('_') : '*'
+                };
+              }
+
+              // Default fallback
+              return { module: p, action: 'view', resource: '*' };
             }
 
-            // Try to parse the permission string (e.g., 'warehouse_view')
-            const parts = p.split('_');
-            if (parts.length >= 2) {
-              return {
-                module: parts[0],
-                action: parts[1],
-                resource: parts.length > 2 ? parts.slice(2).join('_') : '*'
-              };
+            // If it's already in the correct format, return as is
+            return p;
+          });
+
+          setSelectedPermissions(formattedPermissions as Array<{ module: string; action: string; resource: string; }>);
+
+          // Determine if this matches a template
+          const matchingTemplate = permissionTemplates.find(template => {
+            // Check if the permissions match exactly
+            if (template.permissions.length !== formattedPermissions.length) {
+              return false;
             }
 
-            // Default fallback
-            return { module: p, action: 'view', resource: '*' };
+            // Check if all permissions match
+            return template.permissions.every(tp =>
+              formattedPermissions.some((fp: any) =>
+                typeof fp !== 'string' &&
+                fp.module === tp.module &&
+                fp.action === tp.action &&
+                fp.resource === tp.resource
+              )
+            );
+          });
+
+          if (matchingTemplate) {
+            setSelectedTemplate(matchingTemplate.id);
+          } else {
+            setSelectedTemplate('custom');
           }
-
-          // If it's already in the correct format, return as is
-          return p;
-        });
-
-        setSelectedPermissions(formattedPermissions as Array<{ module: string; action: string; resource: string; }>);
-
-        // Determine if this matches a template
-        const matchingTemplate = permissionTemplates.find(template => {
-          // Check if the permissions match exactly
-          if (template.permissions.length !== formattedPermissions.length) {
-            return false;
-          }
-
-          // Check if all permissions match
-          return template.permissions.every(tp =>
-            formattedPermissions.some(fp =>
-              typeof fp !== 'string' &&
-              fp.module === tp.module &&
-              fp.action === tp.action &&
-              fp.resource === tp.resource
-            )
-          );
-        });
-
-        if (matchingTemplate) {
-          setSelectedTemplate(matchingTemplate.id);
-        } else {
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          // Set default values if everything fails
+          setUsername('');
+          setEmail('');
+          setFullName('');
+          setRole('custom');
+          setStatus('active');
+          setSelectedPermissions([]);
           setSelectedTemplate('custom');
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        setIsLoading(false);
-      }, 1000);
+      fetchUserData();
     }
   }, [isEditMode, id]);
 
@@ -397,7 +395,7 @@ const UserForm: React.FC = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -412,15 +410,19 @@ const UserForm: React.FC = () => {
       username,
       email,
       fullName,
-      role,
+      role: role.toUpperCase(), // Ensure role is uppercase for consistency
       status,
       permissions: selectedPermissions,
       createdAt: isEditMode ? '' : new Date().toISOString()
     };
 
-    // Simulate API call to create/update user
-    setTimeout(() => {
-      console.log('User data submitted:', userData);
+    try {
+      // Make API call to create/update user
+      if (isEditMode) {
+        await apiProxy.put(`/api/users/${id}`, userData);
+      } else {
+        await apiProxy.post('/api/users', userData);
+      }
 
       // Log activity
       if (currentUser) {
@@ -434,9 +436,13 @@ const UserForm: React.FC = () => {
         );
       }
 
-      setIsSubmitting(false);
       navigate('/admin/users');
-    }, 1500);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      alert('An error occurred while saving the user. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {

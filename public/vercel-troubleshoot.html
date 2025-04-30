@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vercel Deployment Troubleshooter</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #2563eb;
+    }
+    .card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button.danger {
+      background-color: #dc2626;
+    }
+    button.danger:hover {
+      background-color: #b91c1c;
+    }
+    button.success {
+      background-color: #059669;
+    }
+    button.success:hover {
+      background-color: #047857;
+    }
+    pre {
+      background-color: #f3f4f6;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .success {
+      color: #059669;
+      font-weight: bold;
+    }
+    .error {
+      color: #dc2626;
+      font-weight: bold;
+    }
+    .warning {
+      color: #d97706;
+      font-weight: bold;
+    }
+    .info {
+      color: #2563eb;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vercel Deployment Troubleshooter</h1>
+  
+  <div class="card">
+    <h2>Current Authentication State</h2>
+    <div id="auth-status">Loading...</div>
+    <pre id="user-data"></pre>
+  </div>
+  
+  <div class="card">
+    <h2>Actions</h2>
+    <button id="reset-auth" class="danger">Reset Authentication</button>
+    <button id="create-admin" class="success">Create Admin User</button>
+    <button id="fix-role" class="info">Fix User Role</button>
+    <button id="go-to-login">Go to Login Page</button>
+    <button id="go-to-debug">Go to Debug Page</button>
+  </div>
+  
+  <div class="card">
+    <h2>Result</h2>
+    <div id="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Common Issues</h2>
+    <h3>Access Denied After Login</h3>
+    <p>If you see "Access Denied" after logging in, it's likely because:</p>
+    <ol>
+      <li>The user role is not properly set to "ADMIN" (case-sensitive)</li>
+      <li>The user permissions are not properly set</li>
+      <li>The authentication state is corrupted</li>
+    </ol>
+    <p>Try the following:</p>
+    <ol>
+      <li>Click "Reset Authentication" to clear all authentication data</li>
+      <li>Click "Create Admin User" to create a new admin user with the correct role and permissions</li>
+      <li>Go to the login page and log in with admin@example.com / admin123</li>
+    </ol>
+    
+    <h3>API Connection Issues</h3>
+    <p>If you see API connection errors in the console, it's because the Vercel deployment doesn't have access to your local API server. The application should automatically fall back to using mock data.</p>
+  </div>
+  
+  <script>
+    // Display current authentication state
+    function updateAuthStatus() {
+      const authStatusEl = document.getElementById('auth-status');
+      const userDataEl = document.getElementById('user-data');
+      
+      try {
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+          authStatusEl.innerHTML = '<span class="error">Not authenticated</span>';
+          userDataEl.textContent = 'No user data found in localStorage';
+          return;
+        }
+        
+        const user = JSON.parse(userData);
+        authStatusEl.innerHTML = `<span class="success">Authenticated as ${user.email}</span>`;
+        userDataEl.textContent = JSON.stringify(user, null, 2);
+      } catch (error) {
+        authStatusEl.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        userDataEl.textContent = '';
+      }
+    }
+    
+    // Reset authentication
+    document.getElementById('reset-auth').addEventListener('click', function() {
+      if (confirm('Are you sure you want to reset your authentication state?')) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('localActivities');
+        
+        document.getElementById('result').innerHTML = '<span class="success">Authentication state reset successfully</span>';
+        updateAuthStatus();
+      }
+    });
+    
+    // Create admin user
+    document.getElementById('create-admin').addEventListener('click', function() {
+      try {
+        // Create a new admin user with the correct role
+        const adminUser = {
+          id: 'user-1',
+          username: 'admin',
+          email: 'admin@example.com',
+          fullName: 'Admin User',
+          role: 'ADMIN',
+          status: 'active',
+          permissions: [{ module: '*', action: '*', resource: '*' }],
+          createdAt: '2023-01-01T00:00:00Z',
+          lastLogin: new Date().toISOString(),
+          token: `mock-token-${Date.now()}`
+        };
+        
+        // Store the admin user in localStorage
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        
+        document.getElementById('result').innerHTML = '<span class="success">Admin user created successfully</span>';
+        updateAuthStatus();
+      } catch (error) {
+        document.getElementById('result').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+      }
+    });
+    
+    // Fix user role
+    document.getElementById('fix-role').addEventListener('click', function() {
+      try {
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+          document.getElementById('result').innerHTML = '<span class="error">No user data found in localStorage</span>';
+          return;
+        }
+        
+        const user = JSON.parse(userData);
+        
+        // Fix the role
+        user.role = 'ADMIN';
+        
+        // Ensure permissions are set correctly
+        user.permissions = [{ module: '*', action: '*', resource: '*' }];
+        
+        // Save the updated user data
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        document.getElementById('result').innerHTML = '<span class="success">User role fixed successfully</span>';
+        updateAuthStatus();
+      } catch (error) {
+        document.getElementById('result').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+      }
+    });
+    
+    // Go to login page
+    document.getElementById('go-to-login').addEventListener('click', function() {
+      window.location.href = '/auth/login';
+    });
+    
+    // Go to debug page
+    document.getElementById('go-to-debug').addEventListener('click', function() {
+      window.location.href = '/vercel/debug';
+    });
+    
+    // Initialize
+    updateAuthStatus();
+  </script>
+</body>
+</html>

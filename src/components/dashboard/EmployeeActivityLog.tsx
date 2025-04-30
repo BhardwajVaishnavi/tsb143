@@ -242,7 +242,19 @@ const EmployeeActivityLog: React.FC = () => {
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {(() => {
                       try {
-                        return formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true });
+                        // Validate the timestamp before formatting
+                        const timestamp = activity.timestamp;
+                        if (!timestamp || timestamp === 'Invalid Date') {
+                          return 'Unknown date';
+                        }
+
+                        // Ensure we have a valid date
+                        const date = new Date(timestamp);
+                        if (isNaN(date.getTime())) {
+                          return 'Invalid date';
+                        }
+
+                        return formatDistanceToNow(date, { addSuffix: true });
                       } catch (error) {
                         console.error('Error formatting date:', error, activity.timestamp);
                         return 'Invalid date';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiProxy } from '../../utils/api-proxy';
 import {
   FaLayerGroup,
   FaPlus,
@@ -124,11 +125,20 @@ const PermissionManagement: React.FC = () => {
       updatedAt: new Date().toISOString()
     }));
 
-    // Simulate API call to fetch templates
-    setTimeout(() => {
-      setTemplates(generatedTemplates);
-      setIsLoading(false);
-    }, 1000);
+    // Fetch templates from API
+    const fetchTemplates = async () => {
+      try {
+        const data = await apiProxy.get<PermissionTemplate[]>('/api/permission-templates');
+        setTemplates(data);
+      } catch (error) {
+        console.error('Error fetching permission templates:', error);
+        setTemplates(generatedTemplates);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTemplates();
   }, []);
 
   // Group permissions by category
@@ -180,20 +190,28 @@ const PermissionManagement: React.FC = () => {
   };
 
   // Delete a template
-  const handleDelete = (templateId: string) => {
+  const handleDelete = async (templateId: string) => {
     if (window.confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
-      // Filter out the template to delete
-      const updatedTemplates = templates.filter(t => t.id !== templateId);
-      setTemplates(updatedTemplates);
+      try {
+        // Call API to delete template
+        await apiProxy.delete(`/api/permission-templates/${templateId}`);
 
-      // Log activity
-      if (user) {
-        logActivity(
-          'template_delete',
-          'Deleted permission template',
-          'permission_template',
-          templateId
-        );
+        // Filter out the template to delete
+        const updatedTemplates = templates.filter(t => t.id !== templateId);
+        setTemplates(updatedTemplates);
+
+        // Log activity
+        if (user) {
+          logActivity(
+            'template_delete',
+            'Deleted permission template',
+            'permission_template',
+            templateId
+          );
+        }
+      } catch (error) {
+        console.error('Error deleting template:', error);
+        alert('An error occurred while deleting the template. Please try again.');
       }
     }
   };
@@ -306,7 +324,7 @@ const PermissionManagement: React.FC = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -326,9 +344,11 @@ const PermissionManagement: React.FC = () => {
       updatedAt: new Date().toISOString()
     };
 
-    // Simulate API call to create/update template
-    setTimeout(() => {
+    try {
+      // Call API to create/update template
       if (editingTemplateId) {
+        await apiProxy.put(`/api/permission-templates/${editingTemplateId}`, templateData);
+
         // Update existing template
         const updatedTemplates = templates.map(t =>
           t.id === editingTemplateId ? templateData : t
@@ -345,6 +365,8 @@ const PermissionManagement: React.FC = () => {
           );
         }
       } else {
+        await apiProxy.post('/api/permission-templates', templateData);
+
         // Add new template
         setTemplates([...templates, templateData]);
 
@@ -359,13 +381,17 @@ const PermissionManagement: React.FC = () => {
         }
       }
 
-      setIsSubmitting(false);
       setIsEditing(false);
       setEditingTemplateId(null);
       setTemplateName('');
       setTemplateDescription('');
       setSelectedPermissions([]);
-    }, 1500);
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('An error occurred while saving the template. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {

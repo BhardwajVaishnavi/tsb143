@@ -10,7 +10,8 @@ import {
   FaChevronDown,
   FaUserCircle,
   FaHistory,
-  FaUserCog
+  FaUserCog,
+  FaUserShield
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 

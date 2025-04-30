@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { AuthState, AuthAction, LoginCredentials } from '../types/auth';
 import { API } from '../utils/api';
-import { isVercelDeployment, handleVercelLogin, handleVercelMe, handleVercelLogout } from '../utils/vercel-auth-helper';
+import { isVercelDeployment, handleVercelLogin, handleVercelLogout } from '../utils/vercel-auth-helper';
 
 // Initial state
 const initialState: AuthState = {
@@ -146,6 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
 
+          // Check if we're in a Vercel deployment
+          if (isVercelDeployment()) {
+            console.log('Vercel deployment detected, using stored user data');
+            // In Vercel deployment, we trust the stored user data
+            dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+            return;
+          }
+
           console.log('Verifying token with server...');
           // Verify token with server
           try {
@@ -218,7 +226,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Attempting login for:', credentials.email);
 
     try {
-      // Try to call the API utility
+      // Check if we're in a Vercel deployment
+      if (isVercelDeployment()) {
+        console.log('Vercel deployment detected, using Vercel login handler');
+        try {
+          // Use the Vercel login handler
+          const response = await handleVercelLogin(credentials.email, credentials.password);
+
+          if (response && response.user) {
+            console.log('Vercel login successful');
+            dispatch({ type: 'LOGIN_SUCCESS', payload: response.user });
+
+            // Log activity
+            logActivity(
+              'login',
+              `User ${response.user.fullName} logged in (Vercel)`,
+              'system'
+            );
+
+            return;
+          }
+        } catch (vercelError) {
+          console.error('Vercel login error:', vercelError);
+          throw vercelError;
+        }
+      }
+
+      // If not in Vercel deployment or Vercel login failed, try regular login
       try {
         const userData = await API.auth.login({
           email: credentials.email,
@@ -358,6 +392,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         type: 'LOGIN_FAILURE',
         payload: error instanceof Error ? error.message : 'An error occurred during login'
       });
+      throw error; // Re-throw the error so the login component can handle it
     }
   };
 
@@ -372,20 +407,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
     }
 
-    try {
-      // Try to call the API to logout
+    // Check if we're in a Vercel deployment
+    if (isVercelDeployment()) {
+      console.log('Vercel deployment detected, using Vercel logout handler');
       try {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include'
-        });
-        console.log('Logout API call successful');
-      } catch (apiError) {
-        console.error('Error calling logout API:', apiError);
-        console.log('Continuing with local logout');
+        await handleVercelLogout();
+      } catch (vercelError) {
+        console.error('Error during Vercel logout:', vercelError);
       }
-    } catch (error) {
-      console.error('Error during logout:', error);
+    } else {
+      try {
+        // Try to call the API to logout
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+          });
+          console.log('Logout API call successful');
+        } catch (apiError) {
+          console.error('Error calling logout API:', apiError);
+          console.log('Continuing with local logout');
+        }
+      } catch (error) {
+        console.error('Error during logout:', error);
+      }
     }
 
     // Remove from localStorage

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { apiProxy } from '../../utils/api-proxy';
 import {
   FaUser,
   FaEnvelope,
@@ -59,94 +60,38 @@ const UserDetail: React.FC = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'permissions' | 'activity'>('overview');
 
-  // Mock data loading
+  // Load user data from API
   useEffect(() => {
-    // Simulate API call to fetch user data
-    setTimeout(() => {
-      // Mock user data
-      const mockUser: User = {
-        id: 'user-2',
-        username: 'warehouse_manager',
-        email: 'warehouse@example.com',
-        fullName: 'Warehouse Manager',
-        role: 'warehouse_manager',
-        status: 'active',
-        permissions: ['warehouse_view', 'warehouse_manage_items', 'warehouse_inward', 'warehouse_outward', 'inventory_view'],
-        createdAt: '2023-02-15T00:00:00Z',
-        lastLogin: '2023-06-14T09:15:00Z'
-      };
+    const fetchUserData = async () => {
+      try {
+        // Fetch user data
+        const userData = await apiProxy.get<User>(`/api/users/${id}`);
 
-      // Mock permissions
-      const mockPermissions: Permission[] = [
-        // Dashboard permissions
-        { id: 'dashboard_view', name: 'View Dashboard', description: 'Can view the main dashboard', category: 'Dashboard' },
+        // Normalize user data
+        const normalizedUser = {
+          ...userData,
+          role: typeof userData.role === 'string' ? userData.role.toUpperCase() : 'USER',
+          permissions: Array.isArray(userData.permissions) ? userData.permissions : []
+        };
 
-        // Warehouse permissions
-        { id: 'warehouse_view', name: 'View Warehouse', description: 'Can view warehouse data', category: 'Warehouse' },
-        { id: 'warehouse_manage_items', name: 'Manage Warehouse Items', description: 'Can add, edit, and delete warehouse items', category: 'Warehouse' },
-        { id: 'warehouse_inward', name: 'Manage Inward', description: 'Can record items coming into the warehouse', category: 'Warehouse' },
-        { id: 'warehouse_outward', name: 'Manage Outward', description: 'Can transfer items from warehouse to inventory', category: 'Warehouse' },
-        { id: 'warehouse_damage', name: 'Manage Damage', description: 'Can report damaged items', category: 'Warehouse' },
+        setUser(normalizedUser);
 
-        // Inventory permissions
-        { id: 'inventory_view', name: 'View Inventory', description: 'Can view inventory data', category: 'Inventory' },
-        { id: 'inventory_manage', name: 'Manage Inventory', description: 'Can manage inventory items', category: 'Inventory' },
-        { id: 'inventory_transfer', name: 'Transfer Inventory', description: 'Can transfer items between inventories', category: 'Inventory' },
-      ];
+        // Fetch permissions
+        const permissionsData = await apiProxy.get<Permission[]>('/api/permissions');
+        setPermissions(permissionsData);
 
-      // Mock activity logs
-      const mockActivityLogs: ActivityLog[] = [
-        {
-          id: 'log-1',
-          userId: 'user-2',
-          action: 'login',
-          description: 'User logged in',
-          entityType: 'user',
-          entityId: 'user-2',
-          timestamp: '2023-06-14T09:15:00Z'
-        },
-        {
-          id: 'log-2',
-          userId: 'user-2',
-          action: 'warehouse_inward',
-          description: 'Added 5 item(s) to warehouse from Supplier 1',
-          entityType: 'warehouse',
-          entityId: 'inward-123',
-          timestamp: '2023-06-14T10:30:00Z'
-        },
-        {
-          id: 'log-3',
-          userId: 'user-2',
-          action: 'warehouse_outward',
-          description: 'Transferred 3 item(s) from warehouse to Retail Inventory',
-          entityType: 'warehouse',
-          entityId: 'outward-456',
-          timestamp: '2023-06-14T14:45:00Z'
-        },
-        {
-          id: 'log-4',
-          userId: 'user-2',
-          action: 'inventory_view',
-          description: 'Viewed inventory items',
-          entityType: 'inventory',
-          timestamp: '2023-06-14T16:20:00Z'
-        },
-        {
-          id: 'log-5',
-          userId: 'user-2',
-          action: 'logout',
-          description: 'User logged out',
-          entityType: 'user',
-          entityId: 'user-2',
-          timestamp: '2023-06-14T17:30:00Z'
-        }
-      ];
+        // Fetch activity logs
+        const logsData = await apiProxy.get<ActivityLog[]>(`/api/audit/logs?userId=${id}`);
+        setActivityLogs(logsData);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setIsLoading(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      setUser(mockUser);
-      setPermissions(mockPermissions);
-      setActivityLogs(mockActivityLogs);
-      setIsLoading(false);
-    }, 1000);
+    fetchUserData();
   }, [id]);
 
   // Group permissions by category
@@ -159,39 +104,60 @@ const UserDetail: React.FC = () => {
   }, {} as Record<string, Permission[]>);
 
   // Handle user status change
-  const handleStatusChange = () => {
+  const handleStatusChange = async () => {
     if (!user) return;
 
-    const newStatus = user.status === 'active' ? 'inactive' : 'active';
-    setUser({ ...user, status: newStatus });
+    try {
+      const newStatus = user.status === 'active' ? 'inactive' : 'active';
 
-    // Log activity
-    if (currentUser) {
-      logActivity(
-        'user_status_change',
-        `Changed user status to ${newStatus}`,
-        'user',
-        user.id
-      );
-    }
-  };
+      // Update user status via API
+      await apiProxy.put(`/api/users/${user.id}`, {
+        ...user,
+        status: newStatus
+      });
 
-  // Handle user deletion
-  const handleDeleteUser = () => {
-    if (!user) return;
+      // Update local state
+      setUser({ ...user, status: newStatus });
 
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       // Log activity
       if (currentUser) {
         logActivity(
-          'user_delete',
-          'Deleted user',
+          'user_status_change',
+          `Changed user status to ${newStatus}`,
           'user',
           user.id
         );
       }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Failed to update user status. Please try again.');
+    }
+  };
 
-      navigate('/admin/users');
+  // Handle user deletion
+  const handleDeleteUser = async () => {
+    if (!user) return;
+
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        // Delete user via API
+        await apiProxy.delete(`/api/users/${user.id}`);
+
+        // Log activity
+        if (currentUser) {
+          logActivity(
+            'user_delete',
+            'Deleted user',
+            'user',
+            user.id
+          );
+        }
+
+        navigate('/admin/users');
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Failed to delete user. Please try again.');
+      }
     }
   };
 

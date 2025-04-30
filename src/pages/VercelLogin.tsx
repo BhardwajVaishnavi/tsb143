@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaLock, FaUser, FaExclamationTriangle } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 
 const VercelLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const VercelLogin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
 
   // Get the callback URL from the query string
   const searchParams = new URLSearchParams(location.search);
@@ -20,33 +22,14 @@ const VercelLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      // Check if credentials match the admin user
-      if (email === 'admin@example.com' && password === 'admin123') {
-        // Create a mock user object
-        const user = {
-          id: 'user-1',
-          username: 'admin',
-          email: 'admin@example.com',
-          fullName: 'Admin User',
-          role: 'ADMIN',
-          status: 'active',
-          permissions: [{ module: '*', action: '*', resource: '*' }],
-          createdAt: '2023-01-01T00:00:00Z',
-          lastLogin: new Date().toISOString(),
-          token: `mock-token-${Date.now()}`
-        };
-        
-        // Store the user in localStorage
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Redirect to the callback URL
-        navigate(callbackUrl);
-      } else {
-        setError('Invalid email or password');
-      }
+      // Use the login function from AuthContext
+      await login({ email, password });
+
+      // If login is successful, navigate to the callback URL
+      navigate(callbackUrl);
     } catch (error) {
       console.error('Login error:', error);
-      setError('An error occurred during login');
+      setError(error instanceof Error ? error.message : 'An error occurred during login');
     } finally {
       setLoading(false);
     }
