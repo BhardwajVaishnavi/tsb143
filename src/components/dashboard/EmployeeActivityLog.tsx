@@ -27,12 +27,12 @@ const EmployeeActivityLog: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import DB client
+        const { default: DBClient } = await import('../../utils/db-client-simple');
 
         try {
           // Fetch audit logs
-          const auditLogs = await API.auditLogs.getAll();
+          const auditLogs = await DBClient.auditLogs.getAll();
 
           // Transform audit logs to employee activities
           const transformedActivities: EmployeeActivity[] = auditLogs.map((log: any) => {

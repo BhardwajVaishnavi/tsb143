@@ -252,7 +252,7 @@ const StatsCards = ({ stats }: { stats: any }) => {
                 </dt>
                 <dd>
                   <div className="text-lg font-bold text-gray-900">
-                    ${(stats.totalValue / 1000000).toFixed(1)}M
+                    ₹{(stats.totalValue / 1000000).toFixed(1)}M
                   </div>
                 </dd>
               </dl>
@@ -353,22 +353,22 @@ const RecentActivity = () => {
       try {
         setIsLoading(true);
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import NeonDB utility
+        const { NeonDB } = await import('../../utils/neondb');
 
-        // Fetch audit logs
-        const auditLogs = await API.auditLogs.getAll();
+        // Fetch audit logs from NeonDB
+        const auditLogs = await NeonDB.auditLogs.getAll();
 
         // Transform audit logs to activities
         const transformedActivities = Array.isArray(auditLogs)
           ? auditLogs
-              .filter(log => log.entityType === 'warehouse' || log.entityType === 'inventory' || log.entityType === 'supplier')
+              .filter(log => log.entity_type === 'warehouse' || log.entity_type === 'inventory' || log.entity_type === 'supplier')
               .slice(0, 5)
               .map(log => {
                 let type = 'inventory';
                 let title = log.action;
 
-                if (log.entityType === 'warehouse') {
+                if (log.entity_type === 'warehouse') {
                   if (log.action.includes('inward')) {
                     type = 'shipment';
                     title = 'Inward Shipment';
@@ -379,10 +379,10 @@ const RecentActivity = () => {
                     type = 'inventory';
                     title = 'Damage Report';
                   }
-                } else if (log.entityType === 'supplier') {
+                } else if (log.entity_type === 'supplier') {
                   type = 'supplier';
                   title = log.action.includes('create') ? 'New Supplier Added' : 'Supplier Updated';
-                } else if (log.entityType === 'purchase_order') {
+                } else if (log.entity_type === 'purchase_order') {
                   type = 'order';
                   title = 'Purchase Order ' + (log.action.includes('create') ? 'Created' : 'Updated');
                 }
@@ -392,8 +392,8 @@ const RecentActivity = () => {
                   type,
                   title,
                   description: log.description || 'No description provided',
-                  timestamp: log.createdAt,
-                  user: log.userId || 'System'
+                  timestamp: log.timestamp || log.created_at || new Date().toISOString(),
+                  user: log.user_id || 'System'
                 };
               })
           : [];
@@ -493,37 +493,41 @@ const WarehouseDashboard = () => {
     try {
       setIsLoading(true);
 
-      // Import API utility
-      const { API } = await import('../../utils/api');
+      // Import NeonDB utility
+      const { NeonDB } = await import('../../utils/neondb');
 
-      // Fetch warehouse items
-      const warehouseItems = await API.warehouse.getItems();
+      // Fetch warehouse items from NeonDB
+      const warehouseItems = await NeonDB.warehouse.getItems();
 
       // Calculate total items and value
       const totalItems = Array.isArray(warehouseItems)
         ? warehouseItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
         : 0;
 
+      // Calculate total value - use price or unit_cost if available
       const totalValue = Array.isArray(warehouseItems)
-        ? warehouseItems.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitCost || 0)), 0)
+        ? warehouseItems.reduce((sum, item) => {
+            const itemValue = item.unit_cost || item.price || 0;
+            return sum + ((item.quantity || 0) * itemValue);
+          }, 0)
         : 0;
 
       // Count low stock items
       const lowStockItems = Array.isArray(warehouseItems)
         ? warehouseItems.filter(item => {
-            const reorderPoint = item.reorderPoint || 10;
-            return item.quantity <= reorderPoint;
+            const minStockLevel = item.min_stock_level || 10;
+            return item.quantity <= minStockLevel;
           }).length
         : 0;
 
       // Fetch inward records
-      const inwardRecords = await API.warehouse.getInwardRecords();
+      const inwardRecords = await NeonDB.warehouse.getInwardRecords();
 
       // Fetch outward records
-      const outwardRecords = await API.warehouse.getOutwardRecords();
+      const outwardRecords = await NeonDB.warehouse.getOutwardRecords();
 
       // Fetch damage records
-      const damageRecords = await API.warehouse.getDamageRecords();
+      const damageRecords = await NeonDB.warehouse.getDamageRecords();
 
       // Count pending damage reports
       const pendingDamage = Array.isArray(damageRecords)
@@ -541,9 +545,17 @@ const WarehouseDashboard = () => {
         pendingDamage
       });
 
+      console.log('Dashboard data loaded from NeonDB:', {
+        totalItems,
+        totalValue,
+        lowStockItems,
+        pendingShipments: Array.isArray(outwardRecords) ? outwardRecords.filter(record => record.status === 'pending').length : 0,
+        pendingDamage
+      });
+
       setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching dashboard data from NeonDB:', error);
       setIsLoading(false);
     }
   };

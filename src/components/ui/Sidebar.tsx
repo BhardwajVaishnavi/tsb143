@@ -59,17 +59,17 @@ const SidebarItem = ({ icon, title, to, children, badge, badgeColor = 'bg-primar
     return (
       <div className="mb-1">
         <button
-          className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${isActive ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${isActive ? 'bg-primary-50 text-primary-700 font-medium' : 'text-secondary-600 hover:bg-primary-50'}`}
           onClick={() => setIsOpen(!isOpen)}
         >
-          <span className={`mr-3 text-lg ${isActive ? 'text-primary-600' : 'text-gray-500'}`}>{icon}</span>
+          <span className={`mr-3 text-lg ${isActive ? 'text-primary-600' : 'text-secondary-500'}`}>{icon}</span>
           <span className="flex-1">{title}</span>
           {badge && (
             <span className={`${badgeColor} text-white text-xs font-bold px-2 py-0.5 rounded-full mr-2`}>
               {badge}
             </span>
           )}
-          <span className="text-gray-400">
+          <span className="text-secondary-400">
             {isOpen ? <FaChevronDown size={14} /> : <FaChevronRight size={14} />}
           </span>
         </button>
@@ -87,9 +87,9 @@ const SidebarItem = ({ icon, title, to, children, badge, badgeColor = 'bg-primar
   return (
     <Link
       to={to || '#'}
-      className={`flex items-center px-4 py-3 rounded-lg transition-colors mb-1 ${isActive ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+      className={`flex items-center px-4 py-3 rounded-lg transition-colors mb-1 ${isActive ? 'bg-primary-50 text-primary-700 font-medium' : 'text-secondary-600 hover:bg-primary-50'}`}
     >
-      <span className={`mr-3 text-lg ${isActive ? 'text-primary-600' : 'text-gray-500'}`}>{icon}</span>
+      <span className={`mr-3 text-lg ${isActive ? 'text-primary-600' : 'text-secondary-500'}`}>{icon}</span>
       <span>{title}</span>
       {badge && (
         <span className={`ml-auto ${badgeColor} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>
@@ -103,14 +103,41 @@ const SidebarItem = ({ icon, title, to, children, badge, badgeColor = 'bg-primar
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [parentCategories, setParentCategories] = useState<any[]>([]);
   const { user } = useAuth();
+
+  // Fetch categories for the sidebar
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        // Import axios for API calls
+        const axios = await import('axios');
+
+        // Fetch categories from API
+        const response = await axios.default.get('/api/categories');
+        const categoriesData = response.data || [];
+
+        // Set all categories
+        setCategories(categoriesData);
+
+        // Filter parent categories (those with no parent)
+        const parents = categoriesData.filter((cat: any) => cat.parent_id === null);
+        setParentCategories(parents);
+      } catch (error) {
+        console.error('Error fetching categories for sidebar:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   return (
     <>
       {/* Mobile sidebar backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-gray-900 bg-opacity-50 z-20 lg:hidden"
+          className="fixed inset-0 bg-secondary-900 bg-opacity-50 z-20 lg:hidden"
           onClick={() => setMobileOpen(false)}
         ></div>
       )}
@@ -131,16 +158,17 @@ const Sidebar = () => {
           {/* Sidebar header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
             {!collapsed && (
-              <div>
-                <h1 className="text-xl font-bold text-primary-700">WMS Pro</h1>
-                <p className="text-xs text-gray-500">Warehouse Management</p>
+              <div className="flex items-center">
+                <img src="/uploads/tawanialogo.jpg" alt="Tawania Logo" className="h-10 w-auto mr-3" />
+                <div>
+                  <h1 className="text-xl font-bold text-primary-700">Tawania</h1>
+                  <p className="text-xs text-secondary-500">Warehouse Management</p>
+                </div>
               </div>
             )}
             {collapsed && (
               <div className="mx-auto">
-                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <FaWarehouse className="text-primary-600" />
-                </div>
+                <img src="/uploads/tawanialogo.jpg" alt="Tawania Logo" className="h-10 w-auto" />
               </div>
             )}
             <button
@@ -158,9 +186,9 @@ const Sidebar = () => {
                 <input
                   type="text"
                   placeholder="Search..."
-                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-secondary-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
-                <FaSearch className="absolute left-3 top-2.5 text-gray-400" />
+                <FaSearch className="absolute left-3 top-2.5 text-secondary-400" />
               </div>
             </div>
           )}
@@ -170,61 +198,86 @@ const Sidebar = () => {
             {collapsed ? (
               // Collapsed menu
               <div className="flex flex-col items-center space-y-4">
-                <Link to="/" className="p-2 rounded-lg hover:bg-gray-100">
-                  <FaHome className="text-gray-500" />
+                <Link to="/" className="p-2 rounded-lg hover:bg-primary-50">
+                  <FaHome className="text-secondary-500" />
                 </Link>
                 <div className="relative group">
-                  <Link to="/warehouse" className="p-2 rounded-lg hover:bg-gray-100">
-                    <FaWarehouse className="text-gray-500" />
+                  <Link to="/warehouse" className="p-2 rounded-lg hover:bg-primary-50">
+                    <FaWarehouse className="text-secondary-500" />
                   </Link>
                   <div className="absolute left-full top-0 ml-2 bg-white shadow-lg rounded-lg p-2 w-40 hidden group-hover:block z-50">
-                    <Link to="/warehouse/inward" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Inward</Link>
-                    <Link to="/warehouse/outward" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Outward</Link>
-                    <Link to="/warehouse/damage" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Damage</Link>
-                    <Link to="/warehouse/closing-stock" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Closing Stock</Link>
+                    <Link to="/warehouse/inward" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Inward</Link>
+                    <Link to="/warehouse/outward" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Outward</Link>
+                    <Link to="/warehouse/damage" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Damage</Link>
+                    <Link to="/warehouse/closing-stock" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Closing Stock</Link>
 
                   </div>
                 </div>
                 <div className="relative group">
-                  <Link to="/inventory" className="p-2 rounded-lg hover:bg-gray-100">
-                    <FaBoxes className="text-gray-500" />
+                  <Link to="/inventory" className="p-2 rounded-lg hover:bg-primary-50">
+                    <FaBoxes className="text-secondary-500" />
                   </Link>
                   <div className="absolute left-full top-0 ml-2 bg-white shadow-lg rounded-lg p-2 w-40 hidden group-hover:block z-50">
-                    <Link to="/inventory" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Overview</Link>
-                    <Link to="/inventory/items" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Items</Link>
-                    <Link to="/inventory/transfer" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Transfer</Link>
-                    <Link to="/inventory/audit" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Audit</Link>
-                    <Link to="/inventory/reports" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Reports</Link>
+                    <Link to="/inventory" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Overview</Link>
+                    <Link to="/inventory/items" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Items</Link>
+                    <Link to="/inventory/transfer" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Transfer</Link>
+                    <Link to="/inventory/audit" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Audit</Link>
+                    <Link to="/inventory/reports" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Reports</Link>
                   </div>
                 </div>
-                <Link to="/categories" className="p-2 rounded-lg hover:bg-gray-100">
-                  <FaTag className="text-gray-500" />
-                </Link>
-                <Link to="/suppliers" className="p-2 rounded-lg hover:bg-gray-100">
-                  <FaUsers className="text-gray-500" />
+                <div className="relative group">
+                  <Link to="/categories" className="p-2 rounded-lg hover:bg-primary-50">
+                    <FaTag className="text-secondary-500" />
+                  </Link>
+                  <div className="absolute left-full top-0 ml-2 bg-white shadow-lg rounded-lg p-2 w-48 hidden group-hover:block z-50">
+                    <Link to="/categories" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">All Categories</Link>
+                    <Link to="/categories/new?type=parent" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Add Parent Category</Link>
+
+                    {/* Parent Categories */}
+                    {parentCategories.length > 0 && (
+                      <>
+                        <div className="mt-2 mb-1 px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Parent Categories
+                        </div>
+                        {parentCategories.map((parent) => (
+                          <div key={parent.id}>
+                            <Link
+                              to={`/categories?parent=${parent.id}`}
+                              className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded"
+                            >
+                              {parent.name}
+                            </Link>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <Link to="/suppliers" className="p-2 rounded-lg hover:bg-primary-50">
+                  <FaUsers className="text-secondary-500" />
                 </Link>
                 <div className="relative group">
-                  <Link to="/reports" className="p-2 rounded-lg hover:bg-gray-100">
-                    <FaChartPie className="text-gray-500" />
+                  <Link to="/reports" className="p-2 rounded-lg hover:bg-primary-50">
+                    <FaChartPie className="text-secondary-500" />
                   </Link>
                   <div className="absolute left-full top-0 ml-2 bg-white shadow-lg rounded-lg p-2 w-40 hidden group-hover:block z-50">
-                    <Link to="/reports" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">All Reports</Link>
-                    <Link to="/reports" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Employee Activity</Link>
-                    <Link to="/reports/inventory" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Inventory</Link>
-                    <Link to="/reports/suppliers" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Suppliers</Link>
+                    <Link to="/reports" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">All Reports</Link>
+                    <Link to="/reports" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Employee Activity</Link>
+                    <Link to="/reports/inventory" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Inventory</Link>
+                    <Link to="/reports/suppliers" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Suppliers</Link>
                   </div>
                 </div>
-                <Link to="/audit" className="p-2 rounded-lg hover:bg-gray-100">
-                  <FaClipboardList className="text-gray-500" />
+                <Link to="/audit" className="p-2 rounded-lg hover:bg-primary-50">
+                  <FaClipboardList className="text-secondary-500" />
                 </Link>
                 {user?.role?.toLowerCase() === 'admin' && (
                   <div className="relative group">
-                    <button className="p-2 rounded-lg hover:bg-gray-100">
-                      <FaUserShield className="text-gray-500" />
+                    <button className="p-2 rounded-lg hover:bg-primary-50">
+                      <FaUserShield className="text-secondary-500" />
                     </button>
                     <div className="absolute left-full top-0 ml-2 bg-white shadow-lg rounded-lg p-2 w-48 hidden group-hover:block z-50">
-                      <Link to="/admin/users" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">User Management</Link>
-                      <Link to="/admin/permissions" className="block py-1 px-2 text-sm text-gray-700 hover:bg-gray-100 rounded">Permission Templates</Link>
+                      <Link to="/admin/users" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">User Management</Link>
+                      <Link to="/admin/permissions" className="block py-1 px-2 text-sm text-secondary-700 hover:bg-primary-50 rounded">Permission Templates</Link>
                     </div>
                   </div>
                 )}
@@ -235,54 +288,91 @@ const Sidebar = () => {
                 <SidebarItem icon={<FaHome />} title="Dashboard" to="/" />
 
                 <SidebarItem icon={<FaWarehouse />} title="Warehouse" badge="3" badgeColor="bg-red-500">
-                  <Link to="/warehouse" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Dashboard
                   </Link>
-                  <Link to="/warehouse/overview" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/overview" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Overview
                   </Link>
-                  <Link to="/warehouse/items" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/items" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Items
                   </Link>
-                  <Link to="/warehouse/inward" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/inward" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Inward
                   </Link>
-                  <Link to="/warehouse/outward" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/outward" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Outward
                   </Link>
-                  <Link to="/warehouse/damage" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/damage" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Damage
                   </Link>
-                  <Link to="/warehouse/closing-stock" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/warehouse/closing-stock" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Closing Stock
                   </Link>
                 </SidebarItem>
 
                 <SidebarItem icon={<FaBoxes />} title="Inventory">
-                  <Link to="/inventory" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/inventory" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Overview
                   </Link>
-                  <Link to="/inventory/items" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/inventory/items" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Items
                   </Link>
-                  <Link to="/inventory/transfer" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/inventory/transfer" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Transfer
                   </Link>
-                  <Link to="/inventory/audit" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/inventory/audit" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Audit
                   </Link>
-                  <Link to="/inventory/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/inventory/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Reports
                   </Link>
                 </SidebarItem>
 
                 <SidebarItem icon={<FaTag />} title="Categories">
-                  <Link to="/categories" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/categories" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     All Categories
                   </Link>
-                  <Link to="/categories/new" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
-                    Add Category
+                  <Link to="/categories/new?type=parent" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
+                    Add Parent Category
                   </Link>
+
+                  {/* Parent Categories Section */}
+                  {parentCategories.length > 0 && (
+                    <div className="mt-3 mb-2">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider pl-3 mb-2">
+                        Parent Categories
+                      </div>
+                      {parentCategories.map((parent) => (
+                        <div key={parent.id} className="mb-1">
+                          <Link
+                            to={`/categories?parent=${parent.id}`}
+                            className="flex items-center py-1.5 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-primary-500 mr-2"></span>
+                            <span className="truncate">{parent.name}</span>
+                          </Link>
+
+                          {/* Subcategories for this parent */}
+                          {categories.filter((cat) => cat.parent_id === parent.id).length > 0 && (
+                            <div className="pl-7 mt-1 space-y-1">
+                              {categories
+                                .filter((cat) => cat.parent_id === parent.id)
+                                .map((subcat) => (
+                                  <Link
+                                    key={subcat.id}
+                                    to={`/categories?id=${subcat.id}`}
+                                    className="block py-1 text-xs rounded-md text-secondary-500 hover:text-primary-600"
+                                  >
+                                    {subcat.name}
+                                  </Link>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </SidebarItem>
 
                 <SidebarItem icon={<FaUsers />} title="Suppliers" to="/suppliers" />
@@ -292,19 +382,19 @@ const Sidebar = () => {
                 <SidebarItem icon={<FaFileInvoiceDollar />} title="Purchase Orders" to="/purchase-orders" />
 
                 <SidebarItem icon={<FaChartPie />} title="Reports">
-                  <Link to="/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     All Reports
                   </Link>
-                  <Link to="/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/reports" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Employee Activity
                   </Link>
-                  <Link to="/reports/inventory" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/reports/inventory" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Inventory
                   </Link>
-                  <Link to="/reports/suppliers" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/reports/suppliers" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Suppliers
                   </Link>
-                  <Link to="/reports/performance" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                  <Link to="/reports/performance" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                     Performance
                   </Link>
                 </SidebarItem>
@@ -313,10 +403,10 @@ const Sidebar = () => {
 
                 {user?.role?.toLowerCase() === 'admin' && (
                   <SidebarItem icon={<FaUserShield />} title="Admin">
-                    <Link to="/admin/users" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                    <Link to="/admin/users" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                       User Management
                     </Link>
-                    <Link to="/admin/permissions" className="block py-2 pl-3 pr-4 text-sm rounded-md text-gray-600 hover:bg-gray-100 hover:text-primary-600">
+                    <Link to="/admin/permissions" className="block py-2 pl-3 pr-4 text-sm rounded-md text-secondary-600 hover:bg-primary-50 hover:text-primary-600">
                       Permission Templates
                     </Link>
                   </SidebarItem>
@@ -326,19 +416,19 @@ const Sidebar = () => {
           </nav>
 
           {/* Footer */}
-          <div className={"border-t border-gray-200 p-4 " + (collapsed ? "flex justify-center" : "")}>
+          <div className={"border-t border-secondary-200 p-4 " + (collapsed ? "flex justify-center" : "")}>
             {collapsed ? (
-              <Link to="/settings" className="p-2 text-gray-500 hover:text-primary-600">
+              <Link to="/settings" className="p-2 text-secondary-500 hover:text-primary-600">
                 <FaCog />
               </Link>
             ) : (
               <div className="flex items-center justify-between">
-                <Link to="/settings" className="flex items-center text-gray-600 hover:text-primary-600">
-                  <FaCog className="mr-2" />
+                <Link to="/settings" className="flex items-center text-secondary-600 hover:text-primary-600">
+                  <FaCog className="mr-2 text-primary-500" />
                   <span>Settings</span>
                 </Link>
-                <button className="flex items-center text-gray-600 hover:text-primary-600">
-                  <FaSignOutAlt className="mr-2" />
+                <button className="flex items-center text-secondary-600 hover:text-primary-600">
+                  <FaSignOutAlt className="mr-2 text-primary-500" />
                   <span>Logout</span>
                 </button>
               </div>

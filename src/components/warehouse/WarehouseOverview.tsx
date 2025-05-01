@@ -121,23 +121,29 @@ const WarehouseOverview = () => {
     try {
       setIsLoading(true);
 
-      // Import API utility
-      const { API } = await import('../../utils/api');
+      // Import NeonDB utility
+      const { NeonDB } = await import('../../utils/neondb');
 
       try {
-        // Delete the item
-        await API.warehouse.deleteItem(itemToDelete.id);
+        // Delete the item using NeonDB
+        const result = await NeonDB.warehouse.deleteItem(itemToDelete.id);
 
-        // Create audit log
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to delete item');
+        }
+
+        // Create audit log in NeonDB
         try {
-          await API.auditLogs.create({
+          await NeonDB.auditLogs.create({
             action: 'DELETE_ITEM',
-            entity: 'WarehouseItem',
-            entityId: itemToDelete.id,
-            details: `Deleted warehouse item: ${itemToDelete.name}`
+            entity_type: 'warehouse',
+            entity_id: itemToDelete.id,
+            description: `Deleted warehouse item: ${itemToDelete.name}`,
+            user_id: 'admin', // Use actual user ID if available
+            timestamp: new Date().toISOString()
           });
         } catch (logError) {
-          console.error('Error creating audit log:', logError);
+          console.error('Error creating audit log in NeonDB:', logError);
           // Continue even if audit log creation fails
         }
 
@@ -182,38 +188,45 @@ const WarehouseOverview = () => {
           return;
         }
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import NeonDB utility
+        const { NeonDB } = await import('../../utils/neondb');
 
-        // Fetch warehouse items
+        // Fetch warehouse items from NeonDB
         let warehouseItems = [];
         try {
-          warehouseItems = await API.warehouse.getItems();
+          warehouseItems = await NeonDB.warehouse.getItems();
+          console.log('Warehouse items from NeonDB:', warehouseItems);
         } catch (error) {
-          console.error('Error fetching warehouse items:', error);
+          console.error('Error fetching warehouse items from NeonDB:', error);
           // Use empty array if there's an error
           warehouseItems = [];
         }
 
         // Transform the data to match our WarehouseItem type
         const transformedItems: WarehouseItem[] = Array.isArray(warehouseItems)
-          ? warehouseItems.map((item: any) => ({
-              id: item.id,
-              sku: item.sku,
-              productName: item.productName,
-              quantity: item.quantity,
-              supplier: {
-                id: item.supplierId,
-                name: item.supplier?.name || 'Unknown Supplier'
-              },
-              category: item.category,
-              status: item.status,
-              unitCost: item.unitCost,
-              totalValue: item.totalValue || (item.quantity * item.unitCost),
-              location: item.location,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt
-            }))
+          ? warehouseItems.map((item: any) => {
+              // Calculate unit cost and total value
+              const unitCost = item.unit_cost || 0;
+              const totalValue = item.total_value || (item.quantity * unitCost);
+
+              return {
+                id: item.id,
+                sku: item.sku || '',
+                productName: item.name || 'Unknown Product',
+                quantity: item.quantity || 0,
+                supplier: {
+                  id: item.supplier_id || 'unknown',
+                  name: item.supplier_name || 'Unknown Supplier'
+                },
+                category: item.category || 'Uncategorized',
+                status: item.status || 'active',
+                unitCost: unitCost,
+                totalValue: totalValue,
+                location: item.location || 'Main Warehouse',
+                createdAt: item.created_at || item.last_updated || new Date().toISOString(),
+                updatedAt: item.last_updated || new Date().toISOString()
+              };
+            })
           : [];
 
         setItems(transformedItems);
@@ -226,12 +239,15 @@ const WarehouseOverview = () => {
           return item.quantity <= reorderPoint;
         }).length;
 
-        // Fetch inward records
+        // Fetch inward records from NeonDB
         let inwardData = [];
         try {
-          inwardData = await API.warehouse.getInwardRecords();
+          // Check if NeonDB has inward_records table
+          inwardData = await NeonDB.query('SELECT * FROM inward_records ORDER BY timestamp DESC');
+          inwardData = inwardData.rows || [];
+          console.log('Inward records from NeonDB:', inwardData);
         } catch (error) {
-          console.error('Error fetching inward records:', error);
+          console.error('Error fetching inward records from NeonDB:', error);
           // Use empty array if there's an error
           inwardData = [];
         }
@@ -239,28 +255,31 @@ const WarehouseOverview = () => {
         const transformedInward: InwardRecord[] = Array.isArray(inwardData)
           ? inwardData.map((entry: any) => ({
               id: entry.id,
-              date: entry.receivedDate,
-              itemId: entry.itemId,
-              productName: entry.warehouseItem?.productName || 'Unknown Product',
-              quantity: entry.quantity,
+              date: entry.timestamp || entry.received_date || new Date().toISOString(),
+              itemId: entry.item_id || '',
+              productName: entry.item_name || 'Unknown Product',
+              quantity: entry.quantity || 0,
               supplier: {
-                id: entry.supplierId,
-                name: entry.supplier?.name || 'Unknown Supplier'
+                id: entry.supplier_id || 'unknown',
+                name: entry.supplier_name || 'Unknown Supplier'
               },
-              batchNumber: entry.batchNumber,
-              unitCost: entry.unitCost,
-              totalCost: entry.totalCost,
-              receivedBy: entry.receivedBy
+              batchNumber: entry.batch_number || entry.reference_number || '',
+              unitCost: entry.unit_cost || 0,
+              totalCost: entry.total_cost || (entry.quantity * entry.unit_cost) || 0,
+              receivedBy: entry.received_by_name || entry.received_by || 'System'
             }))
           : [];
         setInwardRecords(transformedInward);
 
-        // Fetch outward records
+        // Fetch outward records from NeonDB
         let outwardData = [];
         try {
-          outwardData = await API.warehouse.getOutwardRecords();
+          // Check if NeonDB has outward_records table
+          outwardData = await NeonDB.query('SELECT * FROM outward_records ORDER BY timestamp DESC');
+          outwardData = outwardData.rows || [];
+          console.log('Outward records from NeonDB:', outwardData);
         } catch (error) {
-          console.error('Error fetching outward records:', error);
+          console.error('Error fetching outward records from NeonDB:', error);
           // Use empty array if there's an error
           outwardData = [];
         }
@@ -268,23 +287,24 @@ const WarehouseOverview = () => {
         const transformedOutward: OutwardRecord[] = Array.isArray(outwardData)
           ? outwardData.map((entry: any) => ({
               id: entry.id,
-              date: entry.transferDate,
-              itemId: entry.itemId,
-              productName: entry.warehouseItem?.productName || 'Unknown Product',
-              quantity: entry.quantity,
-              destination: entry.destination,
-              transferredBy: entry.transferredBy,
-              status: entry.status
+              date: entry.timestamp || entry.transfer_date || new Date().toISOString(),
+              itemId: entry.item_id || '',
+              productName: entry.item_name || 'Unknown Product',
+              quantity: entry.quantity || 0,
+              destination: entry.destination || 'Unknown',
+              transferredBy: entry.transferred_by_name || entry.transferred_by || 'System',
+              status: entry.status || 'completed'
             }))
           : [];
         setOutwardRecords(transformedOutward);
 
-        // Fetch damage records
+        // Fetch damage records from NeonDB
         let damageData = [];
         try {
-          damageData = await API.warehouse.getDamageRecords();
+          damageData = await NeonDB.warehouse.getDamageRecords();
+          console.log('Damage records from NeonDB:', damageData);
         } catch (error) {
-          console.error('Error fetching damage records:', error);
+          console.error('Error fetching damage records from NeonDB:', error);
           // Use empty array if there's an error
           damageData = [];
         }
@@ -292,13 +312,13 @@ const WarehouseOverview = () => {
         const transformedDamage: DamageRecord[] = Array.isArray(damageData)
           ? damageData.map((entry: any) => ({
               id: entry.id,
-              date: entry.reportedDate,
-              itemId: entry.itemId,
-              productName: entry.warehouseItem?.productName || 'Unknown Product',
-              quantity: entry.quantity,
-              reason: entry.reason,
-              reportedBy: entry.reportedBy,
-              status: entry.status
+              date: entry.timestamp || entry.reported_date || new Date().toISOString(),
+              itemId: entry.item_id || '',
+              productName: entry.item_name || 'Unknown Product',
+              quantity: entry.quantity || 0,
+              reason: entry.reason || 'Not specified',
+              reportedBy: entry.reported_by_name || entry.reported_by || 'System',
+              status: entry.status || 'pending'
             }))
           : [];
         setDamageRecords(transformedDamage);

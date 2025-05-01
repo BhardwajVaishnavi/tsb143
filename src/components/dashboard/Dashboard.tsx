@@ -194,12 +194,12 @@ const RecentActivity = () => {
           return;
         }
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import DB client
+        const { default: DBClient } = await import('../../utils/db-client-simple');
 
         try {
           // Fetch audit logs
-          const logs = await API.auditLogs.getAll();
+          const logs = await DBClient.auditLogs.getAll();
 
           // Transform logs to activity format
           const transformedLogs = Array.isArray(logs)
@@ -368,12 +368,12 @@ const AlertsSummary = () => {
           return;
         }
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import DB client
+        const { default: DBClient } = await import('../../utils/db-client-simple');
 
         try {
           // Fetch warehouse items to check for low stock
-          const items = await API.warehouse.getItems();
+          const items = await DBClient.warehouse.getItems();
 
           // Count low stock items (critical)
           const lowStockItems = Array.isArray(items)
@@ -384,7 +384,7 @@ const AlertsSummary = () => {
             : 0;
 
           // Fetch pending damage reports (warnings)
-          const damageReports = await API.warehouse.getDamageRecords();
+          const damageReports = await DBClient.warehouse.getDamageRecords();
           const pendingDamage = Array.isArray(damageReports)
             ? damageReports.filter((report: any) =>
                 report.status === 'pending'
@@ -392,7 +392,7 @@ const AlertsSummary = () => {
             : 0;
 
           // Fetch pending purchase orders (info)
-          const purchaseOrders = await API.purchaseOrders.getAll();
+          const purchaseOrders = await DBClient.purchaseOrders.getAll();
           const pendingOrders = Array.isArray(purchaseOrders)
             ? purchaseOrders.filter((order: any) =>
                 order.status === 'PENDING' || order.status === 'APPROVED'

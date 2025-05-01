@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { FaTag, FaArrowLeft } from 'react-icons/fa';
 import { Category, CategoryFormData } from '../../types/category';
 import { FormField, FormSection, FormActions, SearchableSelect } from '../ui/forms';
-import { useAuth } from '../../contexts/AuthContext';
-
 const CategoryForm: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { logActivity } = useAuth();
+  const location = useLocation();
   const isEditMode = Boolean(id);
+
+  // Parse query parameters
+  const queryParams = new URLSearchParams(location.search);
+  const type = queryParams.get('type');
+  const parentId = queryParams.get('parent');
 
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,7 +22,7 @@ const CategoryForm: React.FC = () => {
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
     description: '',
-    parentId: null,
+    parentId: parentId || null,
     isActive: true
   });
 
@@ -29,16 +32,15 @@ const CategoryForm: React.FC = () => {
       try {
         setIsLoading(true);
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import axios for API calls
+        const axios = await import('axios');
 
-        // Fetch categories from the API
+        // Fetch categories from API
         let categoriesData: any[] = [];
         try {
-          const response = await API.products.getAll();
-          categoriesData = Array.isArray(response) ? response :
-                          response && typeof response === 'object' && 'data' in response ?
-                          (response as any).data : [];
+          const response = await axios.default.get('/api/categories');
+          categoriesData = response.data;
+          console.log('Categories from API:', categoriesData);
         } catch (error) {
           console.error('Error fetching categories from API:', error);
           categoriesData = [];
@@ -49,13 +51,13 @@ const CategoryForm: React.FC = () => {
           id: cat.id,
           name: cat.name,
           description: cat.description || '',
-          parentId: cat.parentId,
-          createdAt: cat.createdAt || new Date().toISOString(),
-          updatedAt: cat.updatedAt || new Date().toISOString(),
-          createdBy: cat.createdBy || 'unknown',
-          updatedBy: cat.updatedBy || 'unknown',
-          isActive: cat.isActive !== undefined ? cat.isActive : true,
-          productCount: cat.productCount || 0
+          parentId: cat.parent_id,
+          createdAt: cat.created_at || new Date().toISOString(),
+          updatedAt: cat.updated_at || new Date().toISOString(),
+          createdBy: cat.created_by || 'System',
+          updatedBy: cat.updated_by || 'System',
+          isActive: cat.is_active !== false,
+          productCount: 0 // Will be populated if needed
         }));
 
         // If no categories are returned, use fallback data
@@ -108,17 +110,16 @@ const CategoryForm: React.FC = () => {
         // If in edit mode, fetch the category data
         if (isEditMode && id) {
           try {
-            // Fetch the specific category
-            const response = await API.products.getById(id);
-            const categoryData = response && typeof response === 'object' ?
-                               'data' in response ? (response as any).data : response : null;
+            // Fetch the specific category from API
+            const response = await axios.default.get(`/api/categories/${id}`);
+            const categoryData = response.data;
 
             if (categoryData) {
               setFormData({
                 name: categoryData.name,
                 description: categoryData.description || '',
-                parentId: categoryData.parentId,
-                isActive: categoryData.isActive !== undefined ? categoryData.isActive : true
+                parentId: categoryData.parent_id || null,
+                isActive: categoryData.is_active !== false
               });
             } else {
               // If category not found, redirect to categories list
@@ -206,35 +207,57 @@ const CategoryForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Import API utility
-      const { API } = await import('../../utils/api');
+      // Import axios for API calls
+      const axios = await import('axios');
 
       if (isEditMode && id) {
         // Update existing category
-        await API.products.update(id, formData);
+        await axios.default.put(`/api/categories/${id}`, {
+          name: formData.name,
+          description: formData.description,
+          parentId: formData.parentId,
+          isActive: formData.isActive
+        });
 
-        // Log activity
-        logActivity(
-          'update_category',
-          `Updated category: ${formData.name}`,
-          'category',
-          id
-        );
+        // Log activity via API
+        try {
+          await axios.default.post('/api/audit/logs', {
+            userId: 'admin', // Use actual user ID if available
+            action: 'UPDATE_CATEGORY',
+            description: `Updated category: ${formData.name}`,
+            entityType: 'category',
+            entityId: id
+          });
+        } catch (logError) {
+          console.error('Error creating audit log:', logError);
+          // Continue even if audit log creation fails
+        }
 
         alert(`Category "${formData.name}" has been updated successfully.`);
       } else {
         // Create new category
-        const response = await API.products.create(formData);
-        const result = response && typeof response === 'object' ?
-                     'data' in response ? (response as any).data : response : { id: 'temp-id' };
+        const response = await axios.default.post('/api/categories', {
+          name: formData.name,
+          description: formData.description,
+          parentId: formData.parentId,
+          isActive: formData.isActive
+        });
 
-        // Log activity
-        logActivity(
-          'create_category',
-          `Created new category: ${formData.name}`,
-          'category',
-          result.id
-        );
+        const newCategory = response.data;
+
+        // Log activity via API
+        try {
+          await axios.default.post('/api/audit/logs', {
+            userId: 'admin', // Use actual user ID if available
+            action: 'CREATE_CATEGORY',
+            description: `Created new category: ${formData.name}`,
+            entityType: 'category',
+            entityId: newCategory.id
+          });
+        } catch (logError) {
+          console.error('Error creating audit log:', logError);
+          // Continue even if audit log creation fails
+        }
 
         alert(`Category "${formData.name}" has been created successfully.`);
       }
@@ -269,12 +292,18 @@ const CategoryForm: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isEditMode ? 'Edit Category' : 'Add New Category'}
+            {isEditMode ? 'Edit Category' :
+              type === 'parent' ? 'Add Parent Category' :
+              parentId ? 'Add Subcategory' : 'Add New Category'}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             {isEditMode
               ? 'Update category details and parent-child relationships'
-              : 'Create a new product category or subcategory'
+              : type === 'parent'
+                ? 'Create a new top-level parent category'
+                : parentId
+                  ? `Create a new subcategory under ${categories.find(c => c.id === parentId)?.name || 'parent'}`
+                  : 'Create a new product category or subcategory'
             }
           </p>
         </div>
@@ -317,24 +346,28 @@ const CategoryForm: React.FC = () => {
               helpText="A brief description of what this category contains"
             />
 
-            <SearchableSelect
-              label="Parent Category"
-              name="parentId"
-              value={formData.parentId || ''}
-              onChange={(value) => setFormData({...formData, parentId: value || null})}
-              options={[
-                { value: '', label: 'None (Top-Level Category)', icon: <FaTag className="text-gray-400" /> },
-                ...getAvailableParentCategories().map(cat => ({
-                  value: cat.id,
-                  label: cat.name,
-                  description: cat.description,
-                  icon: <FaTag className="text-primary-500" />
-                }))
-              ]}
-              error={errors.parentId}
-              helpText="Select a parent category to create a hierarchical structure"
-              placeholder="Select parent category (optional)"
-            />
+            {/* Hide parent category selection when explicitly creating a parent category */}
+            {type !== 'parent' && (
+              <SearchableSelect
+                label="Parent Category"
+                name="parentId"
+                value={formData.parentId || ''}
+                onChange={(value) => setFormData({...formData, parentId: value || null})}
+                options={[
+                  { value: '', label: 'None (Top-Level Category)', icon: <FaTag className="text-gray-400" /> },
+                  ...getAvailableParentCategories().map(cat => ({
+                    value: cat.id,
+                    label: cat.name,
+                    description: cat.description,
+                    icon: <FaTag className="text-primary-500" />
+                  }))
+                ]}
+                error={errors.parentId}
+                helpText={parentId ? `Creating subcategory under ${categories.find(c => c.id === parentId)?.name || 'parent'}` : "Select a parent category to create a hierarchical structure"}
+                placeholder="Select parent category (optional)"
+                disabled={!!parentId} // Disable if parent ID is provided in URL
+              />
+            )}
 
             <div className="flex items-center">
               <input

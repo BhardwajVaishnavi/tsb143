@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaPlus,
   FaEdit,
@@ -9,13 +9,14 @@ import {
   FaChevronDown,
   FaTag,
   FaBoxOpen,
-  FaEye
+  FaEye,
+  FaTimes
 } from 'react-icons/fa';
 import { Category } from '../../types/category';
-import { useAuth } from '../../contexts/AuthContext';
 
 const CategoryList: React.FC = () => {
-  const { logActivity } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,22 +24,29 @@ const CategoryList: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
+  // Parse query parameters
+  const queryParams = new URLSearchParams(location.search);
+  const filterParentId = queryParams.get('parent');
+  const filterId = queryParams.get('id');
+
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setIsLoading(true);
 
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import axios for API calls
+        const axios = await import('axios');
 
-        // Fetch categories from the API
+        // Fetch categories from API
         let categoriesData: any[] = [];
         try {
-          const response = await API.products.getCategories();
-          categoriesData = Array.isArray(response) ? response :
-                          response && typeof response === 'object' && 'data' in response ?
-                          (response as any).data : [];
+          console.log('Fetching categories from API...');
+          const response = await axios.default.get('/api/categories');
+          console.log('API Response:', response);
+          categoriesData = response.data || [];
+          console.log('Categories from API:', categoriesData);
+          console.log('Number of categories:', categoriesData.length);
         } catch (error) {
           console.error('Error fetching categories from API:', error);
           categoriesData = [];
@@ -49,66 +57,38 @@ const CategoryList: React.FC = () => {
           id: cat.id,
           name: cat.name,
           description: cat.description || '',
-          parentId: cat.parentId,
-          createdAt: cat.createdAt || new Date().toISOString(),
-          updatedAt: cat.updatedAt || new Date().toISOString(),
-          createdBy: cat.createdBy || 'unknown',
-          updatedBy: cat.updatedBy || 'unknown',
-          isActive: cat.isActive !== undefined ? cat.isActive : true,
-          productCount: cat.productCount || 0
+          parentId: cat.parent_id,
+          createdAt: cat.created_at || new Date().toISOString(),
+          updatedAt: cat.updated_at || new Date().toISOString(),
+          createdBy: cat.created_by || 'System',
+          updatedBy: cat.updated_by || 'System',
+          isActive: cat.is_active !== false,
+          productCount: 0 // Will be populated below
         }));
 
-        // If no categories are returned, use fallback data
-        if (transformedCategories.length === 0) {
-          // Fallback to some basic categories
-          const fallbackCategories: Category[] = [
-            {
-              id: 'cat-1',
-              name: 'Electronics',
-              description: 'Electronic devices and accessories',
-              parentId: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'system',
-              updatedBy: 'system',
-              isActive: true,
-              productCount: 0
-            },
-            {
-              id: 'cat-2',
-              name: 'Clothing',
-              description: 'Apparel and fashion items',
-              parentId: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'system',
-              updatedBy: 'system',
-              isActive: true,
-              productCount: 0
-            },
-            {
-              id: 'cat-3',
-              name: 'Spices',
-              description: 'Cooking spices and herbs',
-              parentId: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'system',
-              updatedBy: 'system',
-              isActive: true,
-              productCount: 0
+        // Get product counts for each category
+        const getProductCounts = async () => {
+          for (const category of transformedCategories) {
+            try {
+              const response = await axios.default.get(`/api/categories/${category.id}/products/count`);
+              category.productCount = response.data.count;
+            } catch (error) {
+              console.error(`Error getting product count for category ${category.id}:`, error);
+              category.productCount = 0;
             }
-          ];
+          }
+        };
 
-          setCategories(fallbackCategories);
-        } else {
-          setCategories(transformedCategories);
-        }
+        // Execute product count fetching
+        getProductCounts();
+
+        // Set the categories from the API response
+        setCategories(transformedCategories);
 
         // Expand top-level categories by default
-        const rootCategories = transformedCategories.length > 0
-          ? transformedCategories.filter(cat => cat.parentId === null).map(cat => cat.id)
-          : ['cat-1', 'cat-2', 'cat-3'];
+        const rootCategories = transformedCategories
+          .filter(cat => cat.parentId === null)
+          .map(cat => cat.id);
 
         setExpandedCategories(rootCategories);
       } catch (error) {
@@ -165,22 +145,32 @@ const CategoryList: React.FC = () => {
     }
 
     try {
-      // Import API utility
-      const { API } = await import('../../utils/api');
+      // Import axios for API calls
+      const axios = await import('axios');
 
-      // Delete the category
-      await API.products.deleteCategory(categoryToDelete.id);
+      // Delete the category using API
+      const response = await axios.default.delete(`/api/categories/${categoryToDelete.id}`);
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to delete category');
+      }
 
       // Update local state
       setCategories(prev => prev.filter(cat => cat.id !== categoryToDelete.id));
 
-      // Log activity
-      logActivity(
-        'delete_category',
-        `Deleted category: ${categoryToDelete.name}`,
-        'category',
-        categoryToDelete.id
-      );
+      // Log activity via API
+      try {
+        await axios.default.post('/api/audit/logs', {
+          userId: 'admin', // Use actual user ID if available
+          action: 'DELETE_CATEGORY',
+          description: `Deleted category: ${categoryToDelete.name}`,
+          entityType: 'category',
+          entityId: categoryToDelete.id
+        });
+      } catch (logError) {
+        console.error('Error creating audit log:', logError);
+        // Continue even if audit log creation fails
+      }
 
       alert(`Category "${categoryToDelete.name}" has been deleted successfully.`);
     } catch (error) {
@@ -192,13 +182,26 @@ const CategoryList: React.FC = () => {
     }
   };
 
-  // Filter categories based on search term
-  const filteredCategories = searchTerm
-    ? categories.filter(cat =>
-        cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (cat.description && cat.description.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    : categories;
+  // Clear filters function
+  const clearFilters = () => {
+    navigate('/categories');
+  };
+
+  // Filter categories based on search term and query parameters
+  const filteredCategories = categories.filter(cat => {
+    // First apply search term filter if present
+    const matchesSearch = !searchTerm ||
+      cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (cat.description && cat.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // Then apply parent filter if present
+    const matchesParentFilter = !filterParentId || cat.parentId === filterParentId;
+
+    // Then apply specific ID filter if present
+    const matchesIdFilter = !filterId || cat.id === filterId;
+
+    return matchesSearch && (matchesParentFilter || matchesIdFilter);
+  });
 
   // Recursive function to render category tree
   const renderCategoryTree = (parentId: string | null = null, level = 0) => {
@@ -234,11 +237,26 @@ const CategoryList: React.FC = () => {
                   )}
 
                   <div className="flex items-center">
-                    <FaTag className={`mr-2 ${category.isActive ? 'text-primary-500' : 'text-gray-400'}`} />
-                    <div>
-                      <span className={`font-medium ${category.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
-                        {category.name}
+                    {category.parentId === null ? (
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-700 mr-2">
+                        <FaTag className="h-3 w-3" />
                       </span>
+                    ) : (
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-500 mr-2">
+                        <FaTag className="h-3 w-3" />
+                      </span>
+                    )}
+                    <div>
+                      <div className="flex items-center">
+                        <span className={`font-medium ${category.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
+                          {category.name}
+                        </span>
+                        {category.parentId === null && (
+                          <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700">
+                            Parent
+                          </span>
+                        )}
+                      </div>
                       {category.description && (
                         <p className="text-xs text-gray-500">{category.description}</p>
                       )}
@@ -315,14 +333,46 @@ const CategoryList: React.FC = () => {
             Manage product categories and subcategories
           </p>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="mt-4 md:mt-0 flex space-x-3">
           <Link
-            to="/categories/new"
+            to="/categories/new?type=parent"
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
           >
             <FaPlus className="-ml-1 mr-2 h-4 w-4" />
-            Add Category
+            Add Parent Category
           </Link>
+          <div className="relative group">
+            <button
+              type="button"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              <FaPlus className="-ml-1 mr-2 h-4 w-4" />
+              Add Subcategory
+              <FaChevronDown className="ml-2 h-4 w-4" />
+            </button>
+            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden group-hover:block z-10">
+              <div className="py-1" role="menu" aria-orientation="vertical">
+                {categories
+                  .filter(cat => cat.parentId === null) // Only show top-level categories
+                  .map(category => (
+                    <Link
+                      key={category.id}
+                      to={`/categories/new?parent=${category.id}`}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      Under "{category.name}"
+                    </Link>
+                  ))
+                }
+                {categories.filter(cat => cat.parentId === null).length === 0 && (
+                  <div className="block px-4 py-2 text-sm text-gray-500">
+                    No parent categories available
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -338,6 +388,35 @@ const CategoryList: React.FC = () => {
             />
             <FaSearch className="absolute left-3 top-3 text-gray-400" />
           </div>
+
+          {/* Filter indicators */}
+          {(filterParentId || filterId) && (
+            <div className="mt-3 flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Filters:</span>
+              {filterParentId && (
+                <div className="flex items-center bg-primary-50 text-primary-700 rounded-full px-3 py-1 text-sm mr-2">
+                  <span>Parent: {categories.find(c => c.id === filterParentId)?.name || 'Unknown'}</span>
+                  <button
+                    onClick={clearFilters}
+                    className="ml-2 text-primary-500 hover:text-primary-700"
+                  >
+                    <FaTimes size={14} />
+                  </button>
+                </div>
+              )}
+              {filterId && (
+                <div className="flex items-center bg-primary-50 text-primary-700 rounded-full px-3 py-1 text-sm">
+                  <span>Category: {categories.find(c => c.id === filterId)?.name || 'Unknown'}</span>
+                  <button
+                    onClick={clearFilters}
+                    className="ml-2 text-primary-500 hover:text-primary-700"
+                  >
+                    <FaTimes size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="p-4">
@@ -349,13 +428,13 @@ const CategoryList: React.FC = () => {
                 {searchTerm ? 'Try adjusting your search term.' : 'Get started by adding a new category.'}
               </p>
               {!searchTerm && (
-                <div className="mt-6">
+                <div className="mt-6 flex justify-center space-x-3">
                   <Link
-                    to="/categories/new"
+                    to="/categories/new?type=parent"
                     className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
                     <FaPlus className="-ml-1 mr-2 h-4 w-4" />
-                    Add Category
+                    Add Parent Category
                   </Link>
                 </div>
               )}
@@ -371,11 +450,30 @@ const CategoryList: React.FC = () => {
                   <li key={category.id} className="py-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <FaTag className={`mr-2 ${category.isActive ? 'text-primary-500' : 'text-gray-400'}`} />
-                        <div>
-                          <span className={`font-medium ${category.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
-                            {category.name}
+                        {category.parentId === null ? (
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-100 text-primary-700 mr-2">
+                            <FaTag className="h-3 w-3" />
                           </span>
+                        ) : (
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-500 mr-2">
+                            <FaTag className="h-3 w-3" />
+                          </span>
+                        )}
+                        <div>
+                          <div className="flex items-center">
+                            <span className={`font-medium ${category.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {category.name}
+                            </span>
+                            {category.parentId === null ? (
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary-100 text-primary-700">
+                                Parent
+                              </span>
+                            ) : (
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">
+                                Subcategory
+                              </span>
+                            )}
+                          </div>
                           {category.description && (
                             <p className="text-xs text-gray-500">{category.description}</p>
                           )}

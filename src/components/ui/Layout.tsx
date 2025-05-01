@@ -24,7 +24,7 @@ const Breadcrumb = () => {
   };
 
   return (
-    <nav className="flex py-3 px-6 text-gray-500 text-sm border-b border-gray-200 bg-white">
+    <nav className="flex py-3 px-6 text-secondary-500 text-sm border-b border-secondary-200 bg-white">
       <ol className="inline-flex items-center space-x-1 md:space-x-3">
         <li className="inline-flex items-center">
           <a href="/" className="hover:text-primary-600">Home</a>
@@ -35,7 +35,7 @@ const Breadcrumb = () => {
 
           return (
             <li key={to} className="inline-flex items-center">
-              <span className="mx-2 text-gray-400">/</span>
+              <span className="mx-2 text-secondary-400">/</span>
               {isLast ? (
                 <span className="text-primary-600 font-medium">{getPathName(value)}</span>
               ) : (
@@ -63,7 +63,7 @@ const Layout = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-secondary-50">
       <Sidebar />
       <div className="flex-1 flex flex-col lg:ml-72 min-h-screen">
         <Header />
@@ -71,8 +71,13 @@ const Layout = () => {
         <main className="flex-1 p-6 overflow-y-auto">
           <Outlet />
         </main>
-        <footer className="py-4 px-6 border-t border-gray-200 text-center text-sm text-gray-500">
-          © 2023 WMS Pro - Advanced Warehouse Management System
+        <footer className="py-4 px-6 border-t border-secondary-200 text-center">
+          <div className="flex justify-center mb-2">
+            <img src="/uploads/tawanialogo.jpg" alt="Tawania Logo" className="h-8 w-auto" />
+          </div>
+          <p className="text-sm text-secondary-500">
+            © 2023 Tawania - Advanced Warehouse Management System
+          </p>
         </footer>
       </div>
     </div>

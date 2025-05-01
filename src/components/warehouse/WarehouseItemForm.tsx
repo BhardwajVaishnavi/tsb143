@@ -114,22 +114,24 @@ const WarehouseItemForm = () => {
     // Fetch reference data
     const fetchReferenceData = async () => {
       try {
-        // Import API utility
-        const { API } = await import('../../utils/api');
+        // Import axios for API calls
+        const axios = await import('axios');
 
-        // Fetch categories
+        // Fetch categories from API
         try {
-          const categoriesData = await API.products.getCategories();
+          const response = await axios.default.get('/api/categories');
+          const categoriesData = response.data;
+          console.log('Categories from API:', categoriesData);
           if (Array.isArray(categoriesData)) {
             setCategories(categoriesData.map((cat: any) => ({
               id: cat.id,
               name: cat.name,
-              description: cat.description,
-              parentId: cat.parentId
+              description: cat.description || '',
+              parentId: cat.parent_id
             })));
           }
         } catch (error) {
-          console.error('Error fetching categories:', error);
+          console.error('Error fetching categories from API:', error);
           setCategories([]);
         }
 
@@ -308,45 +310,62 @@ const WarehouseItemForm = () => {
   };
 
   // Handle adding a new category
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategory.name.trim()) {
       alert('Category name is required');
       return;
     }
 
-    // Generate a unique ID for the new category
-    const newCategoryId = `cat-${Date.now()}`;
+    try {
+      // Import axios for API calls
+      const axios = await import('axios');
 
-    // Create the new category object
-    const categoryToAdd: Category = {
-      id: newCategoryId,
-      name: newCategory.name.trim(),
-      description: newCategory.description.trim() || undefined,
-      parentId: newCategory.parentId || null
-    };
+      // Create the new category via API
+      const response = await axios.default.post('/api/categories', {
+        name: newCategory.name.trim(),
+        description: newCategory.description.trim() || '',
+        parentId: newCategory.parentId || null,
+        isActive: true
+      });
 
-    // Add the new category to the categories list
-    setCategories([...categories, categoryToAdd]);
+      const categoryToAdd = response.data;
+      console.log('New category created via API:', categoryToAdd);
 
-    // Set the new category as the selected category
-    setFormData({
-      ...formData,
-      categoryId: newCategoryId
-    });
+      // Add the new category to the categories list
+      setCategories([...categories, {
+        id: categoryToAdd.id,
+        name: categoryToAdd.name,
+        description: categoryToAdd.description || '',
+        parentId: categoryToAdd.parent_id
+      }]);
 
-    // Log the activity
-    if (user) {
-      logActivity(
-        'create_category',
-        `Created new category: ${categoryToAdd.name}`,
-        'category',
-        newCategoryId
-      );
+      // Set the new category as the selected category
+      setFormData({
+        ...formData,
+        categoryId: categoryToAdd.id
+      });
+
+      // Log the activity via API
+      try {
+        await axios.default.post('/api/audit/logs', {
+          userId: user?.id || 'admin',
+          action: 'CREATE_CATEGORY',
+          description: `Created new category: ${categoryToAdd.name}`,
+          entityType: 'category',
+          entityId: categoryToAdd.id
+        });
+      } catch (logError) {
+        console.error('Error creating audit log:', logError);
+        // Continue even if audit log creation fails
+      }
+
+      // Reset the new category form and close the modal
+      setNewCategory({ name: '', description: '', parentId: '' });
+      setShowCategoryModal(false);
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert('Failed to create category. Please try again.');
     }
-
-    // Reset the new category form and close the modal
-    setNewCategory({ name: '', description: '', parentId: '' });
-    setShowCategoryModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

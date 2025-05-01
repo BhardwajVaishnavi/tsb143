@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FaBoxOpen,
   FaArrowUp,
@@ -14,9 +14,128 @@ import { Link } from 'react-router-dom';
 // Inventory Status Component
 const WarehouseInventoryStatus = () => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>('Electronics');
+  const [isLoading, setIsLoading] = useState(true);
+  const [inventoryByCategory, setInventoryByCategory] = useState<any[]>([]);
+  const [inventoryAnalytics, setInventoryAnalytics] = useState({
+    totalItems: 0,
+    totalValue: 0,
+    averageUtilization: 0,
+    topPerformingCategory: '',
+    topPerformingCategoryGrowth: 0,
+    underperformingCategory: '',
+    underperformingCategoryDecline: 0,
+    inventoryTurnoverRate: 0,
+    averageDaysInInventory: 0
+  });
 
-  // Mock data for inventory by category
-  const inventoryByCategory = [
+  useEffect(() => {
+    const fetchInventoryData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Import NeonDB utility
+        const { NeonDB } = await import('../../utils/neondb');
+
+        // Fetch warehouse items from NeonDB
+        const warehouseItems = await NeonDB.warehouse.getItems();
+
+        // Group items by category
+        const itemsByCategory: Record<string, any[]> = {};
+
+        if (Array.isArray(warehouseItems)) {
+          warehouseItems.forEach(item => {
+            const category = item.category || 'Uncategorized';
+            if (!itemsByCategory[category]) {
+              itemsByCategory[category] = [];
+            }
+            itemsByCategory[category].push(item);
+          });
+        }
+
+        // Transform data for display
+        const transformedCategories = Object.keys(itemsByCategory).map(category => {
+          const items = itemsByCategory[category];
+          const itemCount = items.length;
+          const value = items.reduce((sum, item) => {
+            const itemValue = item.unit_cost || item.price || 0;
+            return sum + (item.quantity * itemValue);
+          }, 0);
+
+          // Calculate utilization rate (mock for now)
+          const utilizationRate = Math.floor(Math.random() * 40) + 45; // 45-85%
+
+          // Determine trend (mock for now)
+          const trend = Math.random() > 0.5 ? 'up' : 'down';
+          const trendValue = parseFloat((Math.random() * 10).toFixed(1));
+
+          // Count low stock items
+          const lowStockCount = items.filter(item => {
+            const minStockLevel = item.min_stock_level || 10;
+            return item.quantity <= minStockLevel;
+          }).length;
+
+          // Create subcategories (mock for now since we don't have real subcategories)
+          const subcategories = [
+            { id: `${category}-1`, name: `${category} Type A`, count: Math.floor(itemCount * 0.4), value: Math.floor(value * 0.4), trend: Math.random() > 0.5 ? 'up' : 'down' },
+            { id: `${category}-2`, name: `${category} Type B`, count: Math.floor(itemCount * 0.3), value: Math.floor(value * 0.3), trend: Math.random() > 0.5 ? 'up' : 'down' },
+            { id: `${category}-3`, name: `${category} Type C`, count: Math.floor(itemCount * 0.2), value: Math.floor(value * 0.2), trend: Math.random() > 0.5 ? 'up' : 'down' },
+            { id: `${category}-4`, name: `${category} Other`, count: Math.floor(itemCount * 0.1), value: Math.floor(value * 0.1), trend: Math.random() > 0.5 ? 'up' : 'down' },
+          ];
+
+          return {
+            id: category,
+            name: category,
+            itemCount,
+            value,
+            utilizationRate,
+            trend,
+            trendValue,
+            lowStockCount,
+            items: subcategories
+          };
+        });
+
+        setInventoryByCategory(transformedCategories);
+
+        // Calculate inventory analytics
+        const totalItems = warehouseItems.length;
+        const totalValue = warehouseItems.reduce((sum, item) => {
+          const itemValue = item.unit_cost || item.price || 0;
+          return sum + (item.quantity * itemValue);
+        }, 0);
+
+        // Find top and underperforming categories
+        let topCategory = { name: '', growth: 0 };
+        let worstCategory = { name: '', decline: 0 };
+
+        transformedCategories.forEach(category => {
+          if (category.trend === 'up' && category.trendValue > topCategory.growth) {
+            topCategory = { name: category.name, growth: category.trendValue };
+          }
+          if (category.trend === 'down' && category.trendValue > worstCategory.decline) {
+            worstCategory = { name: category.name, decline: category.trendValue };
+          }
+        });
+
+        setInventoryAnalytics({
+          totalItems,
+          totalValue,
+          averageUtilization: Math.floor(transformedCategories.reduce((sum, cat) => sum + cat.utilizationRate, 0) / transformedCategories.length),
+          topPerformingCategory: topCategory.name,
+          topPerformingCategoryGrowth: topCategory.growth,
+          underperformingCategory: worstCategory.name,
+          underperformingCategoryDecline: worstCategory.decline,
+          inventoryTurnoverRate: parseFloat((Math.random() * 3 + 3).toFixed(1)), // Mock data 3-6
+          averageDaysInInventory: Math.floor(Math.random() * 30 + 60) // Mock data 60-90
+        });
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching inventory data:', error);
+        setIsLoading(false);
+
+        // Fallback to mock data
+        setInventoryByCategory([
     {
       id: '1',
       name: 'Electronics',
@@ -80,10 +199,10 @@ const WarehouseInventoryStatus = () => {
         { id: 'b3', name: 'Children\'s Books', count: 120, value: 13000, trend: 'up' },
       ]
     },
-  ];
+        ]);
 
-  // Mock data for inventory analytics
-  const inventoryAnalytics = {
+        // Fallback to mock analytics
+        setInventoryAnalytics({
     totalItems: 8294,
     totalValue: 2043000,
     averageUtilization: 72,
@@ -93,7 +212,12 @@ const WarehouseInventoryStatus = () => {
     underperformingCategoryDecline: 1.2,
     inventoryTurnoverRate: 4.8,
     averageDaysInInventory: 76
-  };
+        });
+      }
+    };
+
+    fetchInventoryData();
+  }, []);
 
   const toggleCategory = (categoryId: string) => {
     if (expandedCategory === categoryId) {
@@ -102,6 +226,18 @@ const WarehouseInventoryStatus = () => {
       setExpandedCategory(categoryId);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white shadow rounded-lg overflow-hidden p-6">
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -165,7 +301,7 @@ const WarehouseInventoryStatus = () => {
                       <div className="text-sm text-gray-900">{category.itemCount.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">${category.value.toLocaleString()}</div>
+                      <div className="text-sm text-gray-900">₹{category.value.toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -235,7 +371,7 @@ const WarehouseInventoryStatus = () => {
                                     <div className="text-xs text-gray-900">{item.count.toLocaleString()}</div>
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-xs text-gray-900">${item.value.toLocaleString()}</div>
+                                    <div className="text-xs text-gray-900">₹{item.value.toLocaleString()}</div>
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
                                     <div className="flex items-center">
@@ -283,7 +419,7 @@ const WarehouseInventoryStatus = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Total Value:</span>
-                  <span className="text-sm font-medium">${inventoryAnalytics.totalValue.toLocaleString()}</span>
+                  <span className="text-sm font-medium">₹{inventoryAnalytics.totalValue.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Average Utilization:</span>
